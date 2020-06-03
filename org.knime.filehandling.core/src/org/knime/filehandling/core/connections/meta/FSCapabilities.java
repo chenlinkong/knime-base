@@ -44,89 +44,32 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Apr 27, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   Feb 9, 2021 (Bjoern Lohrmann, KNIME GmbH): created
  */
-package org.knime.filehandling.core.connections;
-
-import java.util.Arrays;
-
-import org.knime.filehandling.core.connections.meta.FSType;
+package org.knime.filehandling.core.connections.meta;
 
 /**
- * Lists the available options for the relative to file system.
  *
- * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
- * @noreference non-public API
+ * @author Bjoern Lohrmann, KNIME GmbH
  */
-public enum RelativeTo {
+public interface FSCapabilities {
 
-        /**
-         * Relative to mountpoint.
-         */
-        MOUNTPOINT("knime.mountpoint", "Current mountpoint", FSType.RELATIVE_TO_MOUNTPOINT),
+    boolean canBrowse();
 
-        /**
-         * Relative to workflow.
-         */
-        WORKFLOW("knime.workflow", "Current workflow", FSType.RELATIVE_TO_WORKFLOW),
+    boolean canListDirectories();
 
-        /**
-         * Relative to workflow data area..
-         */
-        WORKFLOW_DATA("knime.workflow.data", "Current workflow data area", FSType.RELATIVE_TO_WORKFLOW_DATA_AREA);
+    boolean canCreateDirectories();
 
-    private final String m_settingsValue;
+    boolean canDeleteDirectories();
 
-    private final String m_label;
+    boolean canGetPosixAttributes();
 
-    private final FSType m_fsType;
+    boolean canSetPosixAttributes();
 
-    private RelativeTo(final String settingsValue, final String label, final FSType fsType) {
-        m_settingsValue = settingsValue;
-        m_label = label;
-        m_fsType = fsType;
-    }
+    boolean canWriteFiles();
 
-    @Override
-    public String toString() {
-        return m_label;
-    }
+    boolean canDeleteFiles();
 
-    /**
-     * Retrieves the {@link RelativeTo} corresponding to the provided string (as obtained from
-     * {@link RelativeTo#getSettingsValue()}).
-     *
-     * @param string representation of the {@link RelativeTo} constant (as obtained from
-     *            {@link RelativeTo#getSettingsValue()}).
-     * @return the {@link RelativeTo} constant corresponding to <b>string</b>
-     */
-    public static RelativeTo fromSettingsValue(final String string) {
-        return Arrays.stream(RelativeTo.values())//
-            .filter(r -> r.m_settingsValue.equals(string))//
-            .findFirst()//
-            .orElseThrow(() -> new IllegalArgumentException(
-                String.format("Unknown relative to option '%s' encountered.", string)));
-    }
+    boolean isWorkflowAware();
 
-    /**
-     * Provides a user-friendly label for display purposes.
-     *
-     * @return a user-friendly label for display purposes.
-     */
-    public String getLabel() {
-        return m_label;
-    }
-
-    /**
-     * Provides the settings value.
-     *
-     * @return the settings value
-     */
-    public String getSettingsValue() {
-        return m_settingsValue;
-    }
-
-    public FSType toFSType() {
-        return m_fsType;
-    }
 }

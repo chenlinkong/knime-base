@@ -44,89 +44,51 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Apr 27, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   May 2, 2021 (bjoern): created
  */
-package org.knime.filehandling.core.connections;
+package org.knime.filehandling.core.connections.meta;
 
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
-import org.knime.filehandling.core.connections.meta.FSType;
+import org.apache.commons.lang3.Validate;
 
 /**
- * Lists the available options for the relative to file system.
  *
- * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
- * @noreference non-public API
+ * @author bjoern
  */
-public enum RelativeTo {
+public final class FSDescriptorRegistry {
 
-        /**
-         * Relative to mountpoint.
-         */
-        MOUNTPOINT("knime.mountpoint", "Current mountpoint", FSType.RELATIVE_TO_MOUNTPOINT),
+    private static boolean extensionPointInitialized = false;
 
-        /**
-         * Relative to workflow.
-         */
-        WORKFLOW("knime.workflow", "Current workflow", FSType.RELATIVE_TO_WORKFLOW),
+    private static final Map<FSType, FSDescriptor> FS_DESCRIPTORS = new HashMap<>();
 
-        /**
-         * Relative to workflow data area..
-         */
-        WORKFLOW_DATA("knime.workflow.data", "Current workflow data area", FSType.RELATIVE_TO_WORKFLOW_DATA_AREA);
-
-    private final String m_settingsValue;
-
-    private final String m_label;
-
-    private final FSType m_fsType;
-
-    private RelativeTo(final String settingsValue, final String label, final FSType fsType) {
-        m_settingsValue = settingsValue;
-        m_label = label;
-        m_fsType = fsType;
+    private FSDescriptorRegistry() {
     }
 
-    @Override
-    public String toString() {
-        return m_label;
+    static synchronized void ensureInitialized() {
+        if (!extensionPointInitialized) {
+            FSDescriptorProviderExtensionPointHelper.loadRegisteredFSDescriptors() //
+                .forEach(FSDescriptorRegistry::registerFSDescriptor);
+            extensionPointInitialized = true;
+        }
     }
 
-    /**
-     * Retrieves the {@link RelativeTo} corresponding to the provided string (as obtained from
-     * {@link RelativeTo#getSettingsValue()}).
-     *
-     * @param string representation of the {@link RelativeTo} constant (as obtained from
-     *            {@link RelativeTo#getSettingsValue()}).
-     * @return the {@link RelativeTo} constant corresponding to <b>string</b>
-     */
-    public static RelativeTo fromSettingsValue(final String string) {
-        return Arrays.stream(RelativeTo.values())//
-            .filter(r -> r.m_settingsValue.equals(string))//
-            .findFirst()//
-            .orElseThrow(() -> new IllegalArgumentException(
-                String.format("Unknown relative to option '%s' encountered.", string)));
+    private static synchronized void registerFSDescriptor(final FSType fstype, final FSDescriptor descriptor) {
+        Validate.notNull(fstype, "FSType not allowed to be null");
+        Validate.notNull(descriptor, "FSDescriptor not allowed to be null");
+
+        if (FS_DESCRIPTORS.containsKey(fstype)) {
+            throw new IllegalArgumentException(
+                String.format("FSDescriptor for %s has already been registered", fstype));
+        } else {
+            FS_DESCRIPTORS.put(fstype, descriptor);
+        }
     }
 
-    /**
-     * Provides a user-friendly label for display purposes.
-     *
-     * @return a user-friendly label for display purposes.
-     */
-    public String getLabel() {
-        return m_label;
-    }
-
-    /**
-     * Provides the settings value.
-     *
-     * @return the settings value
-     */
-    public String getSettingsValue() {
-        return m_settingsValue;
-    }
-
-    public FSType toFSType() {
-        return m_fsType;
+    public static synchronized Optional<FSDescriptor> getFSDescriptor(final FSType fsType) {
+        ensureInitialized();
+        return Optional.ofNullable(FS_DESCRIPTORS.get(fsType));
     }
 }

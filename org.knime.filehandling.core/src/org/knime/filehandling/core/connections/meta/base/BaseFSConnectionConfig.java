@@ -44,89 +44,37 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Apr 27, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   May 2, 2021 (bjoern): created
  */
-package org.knime.filehandling.core.connections;
+package org.knime.filehandling.core.connections.meta.base;
 
-import java.util.Arrays;
-
-import org.knime.filehandling.core.connections.meta.FSType;
+import org.knime.filehandling.core.connections.meta.FSConnectionConfig;
 
 /**
- * Lists the available options for the relative to file system.
  *
- * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
- * @noreference non-public API
+ * @author bjoern
  */
-public enum RelativeTo {
+public class BaseFSConnectionConfig implements FSConnectionConfig {
 
-        /**
-         * Relative to mountpoint.
-         */
-        MOUNTPOINT("knime.mountpoint", "Current mountpoint", FSType.RELATIVE_TO_MOUNTPOINT),
+    private final String m_workingDirectory;
 
-        /**
-         * Relative to workflow.
-         */
-        WORKFLOW("knime.workflow", "Current workflow", FSType.RELATIVE_TO_WORKFLOW),
+    private final boolean m_isConnectedFileSystem;
 
-        /**
-         * Relative to workflow data area..
-         */
-        WORKFLOW_DATA("knime.workflow.data", "Current workflow data area", FSType.RELATIVE_TO_WORKFLOW_DATA_AREA);
 
-    private final String m_settingsValue;
-
-    private final String m_label;
-
-    private final FSType m_fsType;
-
-    private RelativeTo(final String settingsValue, final String label, final FSType fsType) {
-        m_settingsValue = settingsValue;
-        m_label = label;
-        m_fsType = fsType;
+    public BaseFSConnectionConfig(final String workingDirectory) {
+        this(workingDirectory, true);
     }
 
-    @Override
-    public String toString() {
-        return m_label;
+    public BaseFSConnectionConfig(final String workingDirectory, final boolean isConnectedFileSystem) {
+        m_workingDirectory = workingDirectory;
+        m_isConnectedFileSystem = isConnectedFileSystem;
     }
 
-    /**
-     * Retrieves the {@link RelativeTo} corresponding to the provided string (as obtained from
-     * {@link RelativeTo#getSettingsValue()}).
-     *
-     * @param string representation of the {@link RelativeTo} constant (as obtained from
-     *            {@link RelativeTo#getSettingsValue()}).
-     * @return the {@link RelativeTo} constant corresponding to <b>string</b>
-     */
-    public static RelativeTo fromSettingsValue(final String string) {
-        return Arrays.stream(RelativeTo.values())//
-            .filter(r -> r.m_settingsValue.equals(string))//
-            .findFirst()//
-            .orElseThrow(() -> new IllegalArgumentException(
-                String.format("Unknown relative to option '%s' encountered.", string)));
+    public String getWorkingDirectory() {
+        return m_workingDirectory;
     }
 
-    /**
-     * Provides a user-friendly label for display purposes.
-     *
-     * @return a user-friendly label for display purposes.
-     */
-    public String getLabel() {
-        return m_label;
-    }
-
-    /**
-     * Provides the settings value.
-     *
-     * @return the settings value
-     */
-    public String getSettingsValue() {
-        return m_settingsValue;
-    }
-
-    public FSType toFSType() {
-        return m_fsType;
+    public boolean isConnectedFileSystem() {
+        return m_isConnectedFileSystem;
     }
 }
