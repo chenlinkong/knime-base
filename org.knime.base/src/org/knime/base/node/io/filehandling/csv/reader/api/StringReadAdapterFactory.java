@@ -65,6 +65,7 @@ import org.knime.core.data.convert.map.MappingException;
 import org.knime.core.data.convert.map.MappingFramework;
 import org.knime.core.data.convert.map.PrimitiveCellValueProducer;
 import org.knime.core.data.convert.map.ProducerRegistry;
+import org.knime.core.data.convert.map.ProductionPath;
 import org.knime.core.data.convert.map.SimpleCellValueProducerFactory;
 import org.knime.core.data.convert.map.SupplierCellValueProducerFactory;
 import org.knime.core.data.def.BooleanCell;
@@ -124,6 +125,19 @@ public enum StringReadAdapterFactory implements ReadAdapterFactory<Class<?>, Str
         registry.register(new SimpleCellValueProducerFactory<>(InputStream.class, InputStream.class,
             StringReadAdapterFactory::readByteFieldsFromSource));
         return registry;
+    }
+
+    public boolean isValid(final Class<?> type, final ProductionPath productionPath) {
+        return isDefaultPath(productionPath) || !isSpecializedPathAvailable(productionPath);
+    }
+
+    private boolean isSpecializedPathAvailable(final ProductionPath productionPath) {
+        return getDefaultTypeMap().values().contains(productionPath.getDestinationType());
+    }
+
+    private boolean isDefaultPath(final ProductionPath productionPath) {
+        final Class<?> sourceType = (Class<?>)productionPath.getSourceType();
+        return getDefaultType(sourceType).equals(productionPath.getDestinationType());
     }
 
     private static String readStringFromSource(final StringReadAdapter source,
@@ -244,6 +258,7 @@ public enum StringReadAdapterFactory implements ReadAdapterFactory<Class<?>, Str
 
     /**
      * {@inheritDoc}
+     *
      * @noreference This enum method is not intended to be referenced by clients.
      */
     @Override

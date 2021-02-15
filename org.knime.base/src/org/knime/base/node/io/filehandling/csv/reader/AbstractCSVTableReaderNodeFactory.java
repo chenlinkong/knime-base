@@ -48,12 +48,20 @@
  */
 package org.knime.base.node.io.filehandling.csv.reader;
 
+import java.util.function.BiPredicate;
+import java.util.function.Function;
+
 import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReader;
 import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
 import org.knime.base.node.io.filehandling.csv.reader.api.StringReadAdapterFactory;
+import org.knime.core.data.DataType;
+import org.knime.core.data.convert.map.ProducerRegistry;
+import org.knime.core.data.convert.map.ProductionPath;
 import org.knime.core.node.context.NodeCreationConfiguration;
 import org.knime.filehandling.core.node.table.reader.AbstractTableReaderNodeFactory;
 import org.knime.filehandling.core.node.table.reader.ReadAdapterFactory;
+import org.knime.filehandling.core.node.table.reader.SelectiveProductionPathProvider;
+import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
 
 /**
@@ -65,7 +73,7 @@ import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarch
 public abstract class AbstractCSVTableReaderNodeFactory
     extends AbstractTableReaderNodeFactory<CSVTableReaderConfig, Class<?>, String> {
 
-    private static final TypeHierarchy<Class<?>, Class<?>> TYPE_HIERARCHY =
+    private static final TreeTypeHierarchy<Class<?>, Class<?>> TYPE_HIERARCHY =
         CSVTableReader.TYPE_HIERARCHY.createTypeFocusedHierarchy();
 
     @Override
@@ -89,8 +97,19 @@ public abstract class AbstractCSVTableReaderNodeFactory
     }
 
     @Override
-    protected CSVMultiTableReadConfig
-        createConfig(final NodeCreationConfiguration nodeCreationConfig) {
+    protected SelectiveProductionPathProvider<Class<?>> createProductionPathProvider() {
+        ProducerRegistry<Class<?>, ?> producerRegistry = StringReadAdapterFactory.INSTANCE.getProducerRegistry();
+        Function<Class<?>, DataType> defaultTypeProvider = StringReadAdapterFactory.INSTANCE::getDefaultType;
+        BiPredicate<Class<?>, ProductionPath> productionPathFilter = StringReadAdapterFactory.INSTANCE::isValid;
+        return new SelectiveProductionPathProvider<>(//
+            producerRegistry, //
+            defaultTypeProvider, //
+            TYPE_HIERARCHY, //
+            productionPathFilter);
+    }
+
+    @Override
+    protected CSVMultiTableReadConfig createConfig(final NodeCreationConfiguration nodeCreationConfig) {
         return new CSVMultiTableReadConfig();
     }
 
