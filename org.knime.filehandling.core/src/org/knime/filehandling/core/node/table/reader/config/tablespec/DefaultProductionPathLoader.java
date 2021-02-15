@@ -44,36 +44,36 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Dec 9, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   Feb 3, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.io.filehandling.csv.reader;
+package org.knime.filehandling.core.node.table.reader.config.tablespec;
 
-import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
-import org.knime.filehandling.core.node.table.reader.config.AbstractMultiTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.DefaultTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.MultiTableReadConfig;
+import org.knime.core.data.convert.map.ProducerRegistry;
+import org.knime.core.data.convert.map.ProductionPath;
+import org.knime.core.data.convert.util.SerializeUtil;
+import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
+import org.knime.core.node.config.base.ConfigBaseRO;
 
 /**
- * The {@link MultiTableReadConfig} for CSV Readers.
+ * Default implementation of a {@link ProductionPathSerializer} that delegates to
+ * {@link SerializeUtil#loadProductionPath(ConfigBaseRO, ProducerRegistry, String)}.
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-public final class CSVMultiTableReadConfig extends
-    AbstractMultiTableReadConfig<CSVTableReaderConfig, DefaultTableReadConfig<CSVTableReaderConfig>, Class<?>, CSVMultiTableReadConfig> {
+final class DefaultProductionPathLoader implements ProductionPathSerializer {
 
-    /**
-     * Constructor.
-     */
-    public CSVMultiTableReadConfig() {
-        super(new DefaultTableReadConfig<>(new CSVTableReaderConfig()), new CSVMultiTableReadConfigSerializer(),
-            new CSVMultiTableReadConfigSerializer());
-        final DefaultTableReadConfig<CSVTableReaderConfig> tc = getTableReadConfig();
-        tc.setColumnHeaderIdx(0);
+    private ProducerRegistry<?, ?> m_registry;
+
+    DefaultProductionPathLoader(final ProducerRegistry<?, ?> registry) {
+        m_registry = registry;
     }
 
     @Override
-    protected CSVMultiTableReadConfig getThis() {
-        return this;
+    public ProductionPath loadProductionPath(final NodeSettingsRO config, final String key)
+        throws InvalidSettingsException {
+        return SerializeUtil.loadProductionPath(config, m_registry, key).orElseThrow(
+            () -> new InvalidSettingsException(String.format("No production path associated with key <%s>", key)));
     }
 
 }

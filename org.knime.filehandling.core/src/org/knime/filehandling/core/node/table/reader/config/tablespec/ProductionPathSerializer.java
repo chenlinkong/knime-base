@@ -44,36 +44,48 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Dec 9, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   Nov 27, 2020 (Tobias): created
  */
-package org.knime.base.node.io.filehandling.csv.reader;
+package org.knime.filehandling.core.node.table.reader.config.tablespec;
 
-import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
-import org.knime.filehandling.core.node.table.reader.config.AbstractMultiTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.DefaultTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.MultiTableReadConfig;
+import org.knime.core.data.convert.datacell.JavaToDataCellConverterRegistry;
+import org.knime.core.data.convert.map.ProductionPath;
+import org.knime.core.data.convert.util.SerializeUtil;
+import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
+import org.knime.core.node.NodeSettingsWO;
 
 /**
- * The {@link MultiTableReadConfig} for CSV Readers.
+ * Serializes {@link ProductionPath}s.
  *
+ * @author Tobias Koetter, KNIME GmbH, Konstanz, Germany
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
+ * @noimplement non-public API
+ * @noreference non-public API
  */
-public final class CSVMultiTableReadConfig extends
-    AbstractMultiTableReadConfig<CSVTableReaderConfig, DefaultTableReadConfig<CSVTableReaderConfig>, Class<?>, CSVMultiTableReadConfig> {
+public interface ProductionPathSerializer {
 
     /**
-     * Constructor.
+     * Load a {@link ProductionPath} from given config.
+     *
+     * @param config Config to load from
+     * @param key setting key
+     * @return an optional {@link ProductionPath}, present if the converter factory identifier was found in the
+     *         {@link JavaToDataCellConverterRegistry} and producer factory identifier was found in the registry.
+     * @throws InvalidSettingsException
      */
-    public CSVMultiTableReadConfig() {
-        super(new DefaultTableReadConfig<>(new CSVTableReaderConfig()), new CSVMultiTableReadConfigSerializer(),
-            new CSVMultiTableReadConfigSerializer());
-        final DefaultTableReadConfig<CSVTableReaderConfig> tc = getTableReadConfig();
-        tc.setColumnHeaderIdx(0);
-    }
+    ProductionPath loadProductionPath(NodeSettingsRO config, String key) throws InvalidSettingsException;
 
-    @Override
-    protected CSVMultiTableReadConfig getThis() {
-        return this;
+    /**
+     * Saves a {@link ProductionPath} into a {@link NodeSettingsWO} object.
+     *
+     * @param productionPath to save
+     * @param settings to save to
+     * @param key settings key
+     */
+    default void saveProductionPath(final ProductionPath productionPath, final NodeSettingsWO settings,
+        final String key) {
+        SerializeUtil.storeProductionPath(productionPath, settings, key);
     }
 
 }

@@ -44,36 +44,63 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Dec 9, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   Feb 9, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.io.filehandling.csv.reader;
+package org.knime.filehandling.core.node.table.reader.config.tablespec;
 
-import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
-import org.knime.filehandling.core.node.table.reader.config.AbstractMultiTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.DefaultTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.MultiTableReadConfig;
+import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
+import org.knime.core.node.NodeSettingsWO;
 
 /**
- * The {@link MultiTableReadConfig} for CSV Readers.
+ * Helper class for serializing {@link ConfigID ConfigIDs}.<br>
+ * It provides backwards compatible loading and saving.
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-public final class CSVMultiTableReadConfig extends
-    AbstractMultiTableReadConfig<CSVTableReaderConfig, DefaultTableReadConfig<CSVTableReaderConfig>, Class<?>, CSVMultiTableReadConfig> {
+final class ConfigIDSerializer {
+
+    private static final String CFG_CONFIG_ID = "config_id";
+
+    private final ConfigIDLoader m_configIDLoader;
+
+    ConfigIDSerializer(final ConfigIDLoader configIDLoader) {
+        m_configIDLoader = configIDLoader;
+    }
+
+    static void saveID(final ConfigID id, final NodeSettingsWO topLevelSettings) {
+        if (id == EmptyConfigID.INSTANCE) {
+            // the TableSpecConfig being serialized was loaded from an old workflow and therefore has no ConfigID
+            // this is done for backwards compatibility
+        } else {
+            id.save(topLevelSettings.addNodeSettings(CFG_CONFIG_ID));
+        }
+    }
+
+    ConfigID loadID(final NodeSettingsRO settings) throws InvalidSettingsException {
+        if (settings.containsKey(CFG_CONFIG_ID)) {
+            return m_configIDLoader.createFromSettings(settings.getNodeSettings(CFG_CONFIG_ID));
+        } else {
+            // the node was last saved before 4.4 -> no config id is available therefore we return the empty config id
+            return EmptyConfigID.INSTANCE;
+        }
+    }
 
     /**
-     * Constructor.
+     * Special configID for loading old (pre 4.4) settings.<br>
+     * Package private for testing purposes, DON'T USE this class FOR ANYTHING ELSE.
+     *
+     * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
      */
-    public CSVMultiTableReadConfig() {
-        super(new DefaultTableReadConfig<>(new CSVTableReaderConfig()), new CSVMultiTableReadConfigSerializer(),
-            new CSVMultiTableReadConfigSerializer());
-        final DefaultTableReadConfig<CSVTableReaderConfig> tc = getTableReadConfig();
-        tc.setColumnHeaderIdx(0);
-    }
+    enum EmptyConfigID implements ConfigID {
 
-    @Override
-    protected CSVMultiTableReadConfig getThis() {
-        return this;
-    }
+            INSTANCE;
 
+        @Override
+        public void save(final NodeSettingsWO settings) {
+            throw new IllegalStateException(
+                "EmptyConfigID only exist for backwards compatibility and should be handled differently.");
+        }
+
+    }
 }

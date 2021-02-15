@@ -44,36 +44,70 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Dec 9, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   Feb 11, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.io.filehandling.csv.reader;
+package org.knime.filehandling.core.node.table.reader.config.tablespec;
 
-import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
-import org.knime.filehandling.core.node.table.reader.config.AbstractMultiTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.DefaultTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.MultiTableReadConfig;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+
+import org.junit.Test;
+import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettings;
 
 /**
- * The {@link MultiTableReadConfig} for CSV Readers.
+ * Contains unit tests for {@link NodeSettingsConfigID}.
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-public final class CSVMultiTableReadConfig extends
-    AbstractMultiTableReadConfig<CSVTableReaderConfig, DefaultTableReadConfig<CSVTableReaderConfig>, Class<?>, CSVMultiTableReadConfig> {
+public class NodeSettingsConfigIDTest {
 
     /**
-     * Constructor.
+     * Tests the save method.
+     *
+     * @throws InvalidSettingsException never thrown
      */
-    public CSVMultiTableReadConfig() {
-        super(new DefaultTableReadConfig<>(new CSVTableReaderConfig()), new CSVMultiTableReadConfigSerializer(),
-            new CSVMultiTableReadConfigSerializer());
-        final DefaultTableReadConfig<CSVTableReaderConfig> tc = getTableReadConfig();
-        tc.setColumnHeaderIdx(0);
+    @Test
+    public void testSave() throws InvalidSettingsException {
+        final NodeSettings toSave = new NodeSettings("test");
+        toSave.addString("key", "value");
+
+        final NodeSettingsConfigID configID = new NodeSettingsConfigID(toSave);
+
+        final NodeSettings saved = new NodeSettings("settings");
+        configID.save(saved);
+
+        assertEquals(toSave, saved.getNodeSettings("test"));
     }
 
-    @Override
-    protected CSVMultiTableReadConfig getThis() {
-        return this;
+    /**
+     * Tests equals and hashCode.
+     */
+    @Test
+    public void testEqualsHashCode() {
+        final NodeSettings settings = new NodeSettings("test");
+        settings.addString("key", "value");
+
+        final NodeSettingsConfigID id = new NodeSettingsConfigID(settings);
+        assertEquals(id, id);
+
+        final NodeSettingsConfigID otherIDSameContent = new NodeSettingsConfigID(settings);
+        assertEquals(id, otherIDSameContent);
+        assertEquals(id.hashCode(), otherIDSameContent.hashCode());
+
+        final NodeSettings otherKeySettings = new NodeSettings("bar");
+        settings.addString("key", "value");
+        NodeSettingsConfigID otherKeySettingsID = new NodeSettingsConfigID(otherKeySettings);
+        assertNotEquals(id, otherKeySettingsID);
+
+        final NodeSettings otherContentSettings = new NodeSettings("test");
+        settings.addString("key", "otherValue");
+        NodeSettingsConfigID otherContentSettingsID = new NodeSettingsConfigID(otherContentSettings);
+        assertNotEquals(id, otherContentSettingsID);
+
+        assertNotEquals(id, "foo");
+
+        assertNotEquals(id, null);
     }
 
 }

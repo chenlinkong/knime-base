@@ -83,7 +83,7 @@ import org.knime.core.node.config.base.ConfigBaseRO;
 import org.knime.core.node.config.base.ConfigBaseWO;
 import org.knime.filehandling.core.node.table.reader.ReadAdapter;
 import org.knime.filehandling.core.node.table.reader.ReadAdapter.ReadAdapterParams;
-import org.knime.filehandling.core.node.table.reader.config.ProductionPathLoader;
+import org.knime.filehandling.core.node.table.reader.config.tablespec.ProductionPathSerializer;
 
 /**
  * ProducerRegistry implementation.
@@ -98,46 +98,41 @@ public final class DataTypeProducerRegistry extends ProducerRegistry<DataType, D
 
     static final ProducerRegistry<DataType, DataValueReadAdapter> INSTANCE = new DataTypeProducerRegistry();
 
-    /**{@link ProductionPathLoader} to use for the table manipulator.*/
-    public static final ProductionPathLoader PATH_LOADER = new TableManipulatorProductionPathLoader();
+    /** {@link ProductionPathSerializer} to use for the table manipulator. */
+    public static final ProductionPathSerializer PATH_LOADER = new TableManipulatorProductionPathLoader();
 
-    private static final class TableManipulatorProductionPathLoader implements ProductionPathLoader {
+    private static final class TableManipulatorProductionPathLoader implements ProductionPathSerializer {
 
         @Override
-        public Optional<ProductionPath> loadProductionPath(final NodeSettingsRO config, final String key)
+        public ProductionPath loadProductionPath(final NodeSettingsRO config, final String key)
             throws InvalidSettingsException {
-
-            final Optional<?> producer =
-                    SerializeUtil.loadConverterFactory(config, getProducerRegistry(), key + "_producer");
-            if (!producer.isPresent()) {
-                return Optional.empty();
-            }
-            @SuppressWarnings("unchecked")
             final CellValueProducerFactory<?, DataType, ?, ?> producerFactory =
-                    (CellValueProducerFactory<?, DataType, ?, ?>)producer.get();
-
-            //copied and adapted from SerializeUtil#loadProductionPath
-            final String id = config.getString(key + "_converter");
-            final Optional<JavaToDataCellConverterFactory<?>> converter;
-            if (CELL_CONVERTER_IDENTITY_FACTORY.equals(id)) {
-                converter = Optional.of(new IdentityCellConverterFactory(producerFactory.getSourceType()));
-            } else {
-                converter = JavaToDataCellConverterRegistry.getInstance().getFactory(id);
-            }
-            if (converter.isPresent()) {
-                converter.get().loadAdditionalConfig(config.getConfig(key + "_converter_config"));
-            }
-
-            if (!converter.isPresent()) {
-                return Optional.empty();
-            }
-            return Optional.of(new ProductionPath(producerFactory,
-                converter.get()));
+                loadCellValueProducerFactory(config, key);
+            final JavaToDataCellConverterFactory<?> converterFactory =
+                loadConverterFactory(config, key, producerFactory.getSourceType());
+            return new ProductionPath(producerFactory, converterFactory);
         }
 
-        @Override
-        public ProducerRegistry<?, ?> getProducerRegistry() {
-            return DataValueReadAdapterFactory.INSTANCE.getProducerRegistry();
+        private static CellValueProducerFactory<?, DataType, ?, ?> loadCellValueProducerFactory(
+            final NodeSettingsRO config, final String key) throws InvalidSettingsException {
+            String producerKey = key + "_producer";
+            return SerializeUtil.loadConverterFactory(config, INSTANCE, producerKey)//
+                .orElseThrow(() -> new InvalidSettingsException(
+                    String.format("Can't load CellValueProducer with key '%s'.", producerKey)));
+        }
+
+        private static JavaToDataCellConverterFactory<?> loadConverterFactory(final NodeSettingsRO settings,
+            final String key, final DataType sourceType) throws InvalidSettingsException {
+            final String id = settings.getString(key + "_converter");
+            if (CELL_CONVERTER_IDENTITY_FACTORY.equals(id)) {
+                return new IdentityCellConverterFactory(sourceType);
+            } else {
+                JavaToDataCellConverterFactory<?> converterFactory = JavaToDataCellConverterRegistry.getInstance()
+                    .getFactory(id).orElseThrow(() -> new InvalidSettingsException(
+                        String.format("Can't load JavaToDataCellConverter with key '%s'.", key)));
+                converterFactory.loadAdditionalConfig(settings.getConfig(key + "_converter_config"));
+                return converterFactory;
+            }
         }
 
     }
@@ -212,8 +207,8 @@ public final class DataTypeProducerRegistry extends ProducerRegistry<DataType, D
 
     }
 
-    private static class IdentityCellValueProducerFactory
-    extends AbstractCellValueProducerFactory<DataValueReadAdapter, DataType, DataCell, ReadAdapterParams<DataValueReadAdapter, TableManipulatorConfig>> {
+    private static class IdentityCellValueProducerFactory extends
+        AbstractCellValueProducerFactory<DataValueReadAdapter, DataType, DataCell, ReadAdapterParams<DataValueReadAdapter, TableManipulatorConfig>> {
 
         private DataType m_type;
 
@@ -308,8 +303,11 @@ public final class DataTypeProducerRegistry extends ProducerRegistry<DataType, D
     private static final class CellValueProducerFactoryImplementation<D> implements
         CellValueProducerFactory<DataValueReadAdapter, DataType, D, ReadAdapterParams<DataValueReadAdapter, TableManipulatorConfig>> {
         private final Class<?> m_destinationType;
+
         private final String m_identifier;
+
         private final DataType m_sourceType;
+
         private DataCellToJavaConverter<DataValue, D> m_converter;
 
         private CellValueProducerFactoryImplementation(final Class<?> destinationType, final String identifier,
@@ -336,8 +334,10 @@ public final class DataTypeProducerRegistry extends ProducerRegistry<DataType, D
         }
 
         @Override
-        public CellValueProducer<DataValueReadAdapter, D, ReadAdapterParams<DataValueReadAdapter, TableManipulatorConfig>> create() {
-            return new CellValueProducer<DataValueReadAdapter, D, ReadAdapter.ReadAdapterParams<DataValueReadAdapter,TableManipulatorConfig>>() {
+        public
+            CellValueProducer<DataValueReadAdapter, D, ReadAdapterParams<DataValueReadAdapter, TableManipulatorConfig>>
+            create() {
+            return new CellValueProducer<DataValueReadAdapter, D, ReadAdapter.ReadAdapterParams<DataValueReadAdapter, TableManipulatorConfig>>() {
 
                 @Override
                 public D produceCellValue(final DataValueReadAdapter source,
@@ -362,22 +362,21 @@ public final class DataTypeProducerRegistry extends ProducerRegistry<DataType, D
             register(registered, sourceType);
             register(registered, ListCell.getCollectionType(sourceType));
             //TODO: Set cells are not supported in the type mapping framework see ArrayToCollectionConverterFactory
-//            register(registered, SetCell.getCollectionType(sourceType));
+            //            register(registered, SetCell.getCollectionType(sourceType));
         }
     }
 
     private static void register(final Set<String> registered, final DataType sourceType) {
         final Collection<DataCellToJavaConverterFactory<?, ?>> factoriesForSourceType =
-                DataCellToJavaConverterRegistry.getInstance().getFactoriesForSourceType(sourceType);
+            DataCellToJavaConverterRegistry.getInstance().getFactoriesForSourceType(sourceType);
         for (DataCellToJavaConverterFactory<?, ?> factory : factoriesForSourceType) {
             final Class<?> destinationType = factory.getDestinationType();
             final String sourceTypeName = sourceType.toPrettyString();
             final String identifier = sourceTypeName + "->" + destinationType.getName();
             if (registered.add(identifier)) {
                 @SuppressWarnings({"rawtypes", "unchecked"})
-                final CellValueProducerFactoryImplementation<?> converter =
-                new CellValueProducerFactoryImplementation(destinationType, identifier, sourceType,
-                    factory.create());
+                final CellValueProducerFactoryImplementation<?> converter = new CellValueProducerFactoryImplementation(
+                    destinationType, identifier, sourceType, factory.create());
                 INSTANCE.register(converter);
             }
         }

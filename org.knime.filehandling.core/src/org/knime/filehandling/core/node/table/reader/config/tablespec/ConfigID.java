@@ -44,36 +44,29 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Dec 9, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   Dec 11, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.io.filehandling.csv.reader;
+package org.knime.filehandling.core.node.table.reader.config.tablespec;
 
-import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
-import org.knime.filehandling.core.node.table.reader.config.AbstractMultiTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.DefaultTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.MultiTableReadConfig;
+import org.knime.core.node.NodeSettingsWO;
+import org.knime.filehandling.core.node.table.reader.SourceGroup;
 
 /**
- * The {@link MultiTableReadConfig} for CSV Readers.
+ * A {@link ConfigID} is an immutable identifier of a configuration used to create a {@link TableSpecConfig}.<br>
+ * It is stored as part of the TableSpecConfig and then used in
+ * {@link TableSpecConfig#isConfiguredWith(ConfigID, SourceGroup)} and
+ * {@link TableSpecConfig#isConfiguredWith(ConfigID, String)} to decide if the spec was created with the same config.
+ *
+ * <b>NOTE</b>: Implementing classes MUST override {@link Object#equals(Object)}.
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-public final class CSVMultiTableReadConfig extends
-    AbstractMultiTableReadConfig<CSVTableReaderConfig, DefaultTableReadConfig<CSVTableReaderConfig>, Class<?>, CSVMultiTableReadConfig> {
+public interface ConfigID {
 
     /**
-     * Constructor.
+     * Saves the ConfigID into the provided {@link NodeSettingsWO}.
+     *
+     * @param settings to save to
      */
-    public CSVMultiTableReadConfig() {
-        super(new DefaultTableReadConfig<>(new CSVTableReaderConfig()), new CSVMultiTableReadConfigSerializer(),
-            new CSVMultiTableReadConfigSerializer());
-        final DefaultTableReadConfig<CSVTableReaderConfig> tc = getTableReadConfig();
-        tc.setColumnHeaderIdx(0);
-    }
-
-    @Override
-    protected CSVMultiTableReadConfig getThis() {
-        return this;
-    }
-
+    void save(NodeSettingsWO settings);
 }

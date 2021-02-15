@@ -44,36 +44,49 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Dec 9, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   Feb 2, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.io.filehandling.csv.reader;
+package org.knime.filehandling.core.node.table.reader.config.tablespec;
 
-import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
-import org.knime.filehandling.core.node.table.reader.config.AbstractMultiTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.DefaultTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.MultiTableReadConfig;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
+import org.knime.core.node.NodeSettingsWO;
+import org.knime.filehandling.core.node.table.reader.spec.TypedReaderColumnSpec;
+import org.knime.filehandling.core.node.table.reader.spec.TypedReaderTableSpec;
 
 /**
- * The {@link MultiTableReadConfig} for CSV Readers.
+ * Serializer for {@link TypedReaderTableSpec TypedReaderTableSpecs}.
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-public final class CSVMultiTableReadConfig extends
-    AbstractMultiTableReadConfig<CSVTableReaderConfig, DefaultTableReadConfig<CSVTableReaderConfig>, Class<?>, CSVMultiTableReadConfig> {
+final class TypedReaderTableSpecSerializer<T> {
 
-    /**
-     * Constructor.
-     */
-    public CSVMultiTableReadConfig() {
-        super(new DefaultTableReadConfig<>(new CSVTableReaderConfig()), new CSVMultiTableReadConfigSerializer(),
-            new CSVMultiTableReadConfigSerializer());
-        final DefaultTableReadConfig<CSVTableReaderConfig> tc = getTableReadConfig();
-        tc.setColumnHeaderIdx(0);
+    private static final String CFG_NUM_COLUMNS = "num_columns";
+
+    private final TypedReaderColumnSpecSerializer<T> m_columnSerializer;
+
+    TypedReaderTableSpecSerializer(final TypedReaderColumnSpecSerializer<T> columnSerializer) {
+        m_columnSerializer = columnSerializer;
     }
 
-    @Override
-    protected CSVMultiTableReadConfig getThis() {
-        return this;
+    void save(final TypedReaderTableSpec<T> tableSpec, final NodeSettingsWO settings) {
+        settings.addInt(CFG_NUM_COLUMNS, tableSpec.size());
+        int i = 0;
+        for (TypedReaderColumnSpec<T> column : tableSpec) {
+            m_columnSerializer.save(column, settings.addNodeSettings("" + i));
+            i++;
+        }
     }
 
+    TypedReaderTableSpec<T> load(final NodeSettingsRO settings) throws InvalidSettingsException {
+        final int numColumns = settings.getInt(CFG_NUM_COLUMNS);
+        final List<TypedReaderColumnSpec<T>> columns = new ArrayList<>(numColumns);
+        for (int i = 0; i < numColumns; i++) {
+            columns.add(m_columnSerializer.load(settings.getNodeSettings("" + i)));
+        }
+        return new TypedReaderTableSpec<>(columns);
+    }
 }

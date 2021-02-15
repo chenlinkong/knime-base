@@ -53,7 +53,7 @@ import org.knime.core.data.filestore.FileStoreFactory;
 import org.knime.core.node.ExecutionMonitor;
 import org.knime.core.node.streamable.RowOutput;
 import org.knime.filehandling.core.node.table.reader.PreviewRowIterator;
-import org.knime.filehandling.core.node.table.reader.config.TableSpecConfig;
+import org.knime.filehandling.core.node.table.reader.config.tablespec.TableSpecConfig;
 
 /**
  * Encapsulates information necessary to read tables from multiple items.

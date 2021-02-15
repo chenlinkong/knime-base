@@ -53,6 +53,7 @@ import static org.knime.filehandling.core.util.SettingsUtils.getOrEmpty;
 import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
 import org.knime.base.node.io.filehandling.csv.reader.api.QuoteOption;
 import org.knime.base.node.io.filehandling.csv.reader.api.StringReadAdapterFactory;
+import org.knime.core.data.convert.map.ProducerRegistry;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeSettings;
@@ -63,14 +64,15 @@ import org.knime.core.node.defaultnodesettings.SettingsModel;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.filehandling.core.node.table.reader.SpecMergeMode;
 import org.knime.filehandling.core.node.table.reader.config.AbstractTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.ConfigID;
-import org.knime.filehandling.core.node.table.reader.config.ConfigIDFactory;
 import org.knime.filehandling.core.node.table.reader.config.ConfigSerializer;
 import org.knime.filehandling.core.node.table.reader.config.DefaultTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.DefaultTableSpecConfigSerializer;
-import org.knime.filehandling.core.node.table.reader.config.DefaultTableSpecConfigSerializer.ExternalConfig;
-import org.knime.filehandling.core.node.table.reader.config.NodeSettingsConfigID;
 import org.knime.filehandling.core.node.table.reader.config.TableReadConfig;
+import org.knime.filehandling.core.node.table.reader.config.tablespec.ConfigID;
+import org.knime.filehandling.core.node.table.reader.config.tablespec.ConfigIDFactory;
+import org.knime.filehandling.core.node.table.reader.config.tablespec.NodeSettingsConfigID;
+import org.knime.filehandling.core.node.table.reader.config.tablespec.NodeSettingsSerializer;
+import org.knime.filehandling.core.node.table.reader.config.tablespec.TableSpecConfigSerializer;
+import org.knime.filehandling.core.node.table.reader.selector.ColumnFilterMode;
 import org.knime.filehandling.core.util.SettingsUtils;
 
 /**
@@ -78,13 +80,8 @@ import org.knime.filehandling.core.util.SettingsUtils;
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-enum CSVMultiTableReadConfigSerializer
+class CSVMultiTableReadConfigSerializer
     implements ConfigSerializer<CSVMultiTableReadConfig>, ConfigIDFactory<CSVMultiTableReadConfig> {
-
-        /**
-         * Singleton instance.
-         */
-        INSTANCE();
 
     private static final boolean DEFAULT_FAIL_ON_DIFFERING_SPECS = true;
 
@@ -166,11 +163,34 @@ enum CSVMultiTableReadConfigSerializer
     /** string key used to save the value of the character used as comment start */
     private static final String CFG_COMMENT_CHAR = "comment_char";
 
-    private final DefaultTableSpecConfigSerializer<Class<?>> m_tableSpecConfigSerializer;
+    private final TableSpecConfigSerializer<Class<?>> m_tableSpecConfigSerializer;
 
-    private CSVMultiTableReadConfigSerializer() {
-        m_tableSpecConfigSerializer = new DefaultTableSpecConfigSerializer<>(
-            StringReadAdapterFactory.INSTANCE.getProducerRegistry(), String.class, this);
+    private enum ClassTypeSerializer implements NodeSettingsSerializer<Class<?>> {
+            INSTANCE;
+
+        @Override
+        public void save(final Class<?> object, final NodeSettingsWO settings) {
+            settings.addString("class", object.getName());
+        }
+
+        @Override
+        public Class<?> load(final NodeSettingsRO settings) throws InvalidSettingsException {
+            try {
+                return Class.forName(settings.getString("class"));
+            } catch (ClassNotFoundException e) {
+                throw new InvalidSettingsException("Loading the type failed.", e);
+            }
+        }
+
+    }
+
+    CSVMultiTableReadConfigSerializer() {
+        ProducerRegistry<Class<?>, ?> producerRegistry = StringReadAdapterFactory.INSTANCE.getProducerRegistry();
+        m_tableSpecConfigSerializer = TableSpecConfigSerializer//
+            .builder(producerRegistry, this, ClassTypeSerializer.INSTANCE)
+            .addV43Support()//
+            .addV42Support(producerRegistry, String.class)//
+            .build();
     }
 
     @Override
@@ -183,9 +203,9 @@ enum CSVMultiTableReadConfigSerializer
         loadEncodingTabInDialog(config, getOrEmpty(settings, CFG_ENCODING_TAB));
         if (settings.containsKey(CFG_TABLE_SPEC_CONFIG)) {
             try {
+                m_tableSpecConfigSerializer.setColumnFilterMode(loadColumnFilterModeForOldWorkflows(advancedSettings));
                 config.setTableSpecConfig(
-                    m_tableSpecConfigSerializer.load(settings.getNodeSettings(CFG_TABLE_SPEC_CONFIG),
-                        new ExternalConfig(loadSpecMergeModeForOldWorkflows(advancedSettings), false)));
+                    m_tableSpecConfigSerializer.load(settings.getNodeSettings(CFG_TABLE_SPEC_CONFIG)));
             } catch (InvalidSettingsException ex) {// NOSONAR, see below
                 /* Can only happen in TableSpecConfig#load, since we checked #NodeSettingsRO#getNodeSettings(String)
                  * before. The framework takes care that #validate is called before load so we can assume that this
@@ -195,6 +215,12 @@ enum CSVMultiTableReadConfigSerializer
         } else {
             config.setTableSpecConfig(null);
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static ColumnFilterMode loadColumnFilterModeForOldWorkflows(final NodeSettingsRO advancedSettings) {
+        final SpecMergeMode specMergeMode = loadSpecMergeModeForOldWorkflows(advancedSettings);
+        return specMergeMode != null ? specMergeMode.getColumnFilterMode() : null;
     }
 
     @SuppressWarnings("deprecation")
@@ -325,8 +351,9 @@ enum CSVMultiTableReadConfigSerializer
         loadLimitRowsTabInModel(config, settings.getNodeSettings(CFG_LIMIT_ROWS_TAB));
         loadEncodingTabInModel(config, settings.getNodeSettings(CFG_ENCODING_TAB));
         if (settings.containsKey(CFG_TABLE_SPEC_CONFIG)) {
-            config.setTableSpecConfig(m_tableSpecConfigSerializer.load(settings.getNodeSettings(CFG_TABLE_SPEC_CONFIG),
-                new ExternalConfig(loadSpecMergeModeForOldWorkflows(advancedSettings), false)));
+            m_tableSpecConfigSerializer.setColumnFilterMode(loadColumnFilterModeForOldWorkflows(advancedSettings));
+            config
+                .setTableSpecConfig(m_tableSpecConfigSerializer.load(settings.getNodeSettings(CFG_TABLE_SPEC_CONFIG)));
         } else {
             config.setTableSpecConfig(null);
         }
@@ -414,7 +441,8 @@ enum CSVMultiTableReadConfigSerializer
     @Override
     public void saveInModel(final CSVMultiTableReadConfig config, final NodeSettingsWO settings) {
         if (config.hasTableSpecConfig()) {
-            config.getTableSpecConfig().save(settings.addNodeSettings(CFG_TABLE_SPEC_CONFIG));
+            m_tableSpecConfigSerializer.save(config.getTableSpecConfig(),
+                settings.addNodeSettings(CFG_TABLE_SPEC_CONFIG));
         }
         saveSettingsTab(config, SettingsUtils.getOrAdd(settings, CFG_SETTINGS_TAB));
         saveAdvancedSettingsTab(config, settings.addNodeSettings(CFG_ADVANCED_SETTINGS_TAB));
@@ -489,13 +517,16 @@ enum CSVMultiTableReadConfigSerializer
     }
 
     @Override
+    // TODO remove config. It's not needed for validation!
     public void validate(final CSVMultiTableReadConfig config, final NodeSettingsRO settings)
         throws InvalidSettingsException {
+        final NodeSettingsRO advancedSettings = settings.getNodeSettings(CFG_ADVANCED_SETTINGS_TAB);
         if (settings.containsKey(CFG_TABLE_SPEC_CONFIG)) {
-            m_tableSpecConfigSerializer.validate(settings.getNodeSettings(CFG_TABLE_SPEC_CONFIG));
+            m_tableSpecConfigSerializer.setColumnFilterMode(loadColumnFilterModeForOldWorkflows(advancedSettings));
+            m_tableSpecConfigSerializer.load(settings.getNodeSettings(CFG_TABLE_SPEC_CONFIG));
         }
         validateSettingsTab(settings.getNodeSettings(CFG_SETTINGS_TAB));
-        validateAdvancedSettingsTab(settings.getNodeSettings(CFG_ADVANCED_SETTINGS_TAB));
+        validateAdvancedSettingsTab(advancedSettings);
         validateLimitRowsTab(settings.getNodeSettings(CFG_LIMIT_ROWS_TAB));
         validateEncodingTab(settings.getNodeSettings(CFG_ENCODING_TAB));
     }

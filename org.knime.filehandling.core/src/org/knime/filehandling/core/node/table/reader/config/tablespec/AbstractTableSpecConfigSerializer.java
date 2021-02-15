@@ -44,36 +44,45 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Dec 9, 2020 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
+ *   Feb 3, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.io.filehandling.csv.reader;
+package org.knime.filehandling.core.node.table.reader.config.tablespec;
 
-import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
-import org.knime.filehandling.core.node.table.reader.config.AbstractMultiTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.DefaultTableReadConfig;
-import org.knime.filehandling.core.node.table.reader.config.MultiTableReadConfig;
+import org.knime.filehandling.core.node.table.reader.selector.ColumnFilterMode;
 
 /**
- * The {@link MultiTableReadConfig} for CSV Readers.
+ * Provides implementations for {@link TableSpecConfigSerializer#setColumnFilterMode(ColumnFilterMode)} and
+ * {@link TableSpecConfigSerializer#setSkipEmptyColumns(boolean)}.
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-public final class CSVMultiTableReadConfig extends
-    AbstractMultiTableReadConfig<CSVTableReaderConfig, DefaultTableReadConfig<CSVTableReaderConfig>, Class<?>, CSVMultiTableReadConfig> {
+abstract class AbstractTableSpecConfigSerializer<T> implements TableSpecConfigSerializer<T> {
 
-    /**
-     * Constructor.
-     */
-    public CSVMultiTableReadConfig() {
-        super(new DefaultTableReadConfig<>(new CSVTableReaderConfig()), new CSVMultiTableReadConfigSerializer(),
-            new CSVMultiTableReadConfigSerializer());
-        final DefaultTableReadConfig<CSVTableReaderConfig> tc = getTableReadConfig();
-        tc.setColumnHeaderIdx(0);
+    private ColumnFilterMode m_columnFilterMode;
+
+    private boolean m_skipEmptyColumns = false;
+
+    protected AbstractTableSpecConfigSerializer() {
     }
 
     @Override
-    protected CSVMultiTableReadConfig getThis() {
-        return this;
+    public void setColumnFilterMode(final ColumnFilterMode columnFilterMode) {
+        m_columnFilterMode = columnFilterMode;
+    }
+
+    @Override
+    public void setSkipEmptyColumns(final boolean skipEmptyColumns) {
+        m_skipEmptyColumns = skipEmptyColumns;
+    }
+
+    protected final ColumnFilterMode getAndResetColumnFilterMode() {
+        final ColumnFilterMode mode = m_columnFilterMode;
+        m_columnFilterMode = null;
+        return mode;
+    }
+
+    protected final boolean isSkipEmptyColumns() {
+        return m_skipEmptyColumns;
     }
 
 }
