@@ -44,63 +44,44 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Nov 16, 2020 (Tobias): created
+ *   Feb 4, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.preproc.manipulator.mapping;
+package org.knime.filehandling.core.node.table.reader.type.hierarchy;
 
-import org.knime.core.data.DataType;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
+import java.util.stream.Stream;
 
 /**
- * {@link TypeHierarchy} used by the Table Manipulator node.
+ * Represents the path from a particular type up to the root of its (sub)hierarchy.
  *
- * @author Tobias Koetter, KNIME GmbH, Konstanz, Germany
+ * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
+ * @param <T> type used to identify types
  */
-public enum DataTypeTypeHierarchy implements TypeHierarchy<DataType, DataType> {
+public interface TypePath<T> extends Iterable<T> {
 
     /**
-     * The singleton instance.
+     * The most specific type in the path, that marks its start.
+     *
+     * @return the start point of the path
      */
-    INSTANCE;
+    T getMostSpecificType();
 
-    static class DataTypeResolver implements TypeResolver<DataType, DataType> {
+    /**
+     * The most general type in the path, that marks its end.
+     *
+     * @return the end of the path
+     */
+    T getMostGeneralType();
 
-        private DataType m_current;
+    /**
+     * @return the number of types in the path
+     */
+    int size();
 
-        @Override
-        public DataType getMostSpecificType() {
-            return m_current;
-        }
-
-        @Override
-        public void accept(final DataType value) {
-            if (m_current == null) {
-                m_current = value;
-            } else if (m_current != value) { //NOSONAR
-                m_current = DataType.getCommonSuperType(m_current, value);
-            }
-        }
-
-        @Override
-        public boolean reachedTop() {
-            return false;
-        }
-
-        @Override
-        public boolean hasType() {
-            return m_current != null;
-        }
-
-    }
-
-    @Override
-    public TypeResolver<DataType, DataType> createResolver() {
-        return new DataTypeResolver();
-    }
-
-    @Override
-    public boolean supports(final DataType value) {
-        return true;
-    }
+    /**
+     * Creates a {@link Stream} of the contained types.
+     *
+     * @return a {@link Stream} of the contained types
+     */
+    Stream<T> stream();
 
 }

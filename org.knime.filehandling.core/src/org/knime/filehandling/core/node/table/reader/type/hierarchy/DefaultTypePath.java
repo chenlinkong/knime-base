@@ -44,63 +44,56 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Nov 16, 2020 (Tobias): created
+ *   Feb 4, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.preproc.manipulator.mapping;
+package org.knime.filehandling.core.node.table.reader.type.hierarchy;
 
-import org.knime.core.data.DataType;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
+import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Stream;
 
 /**
- * {@link TypeHierarchy} used by the Table Manipulator node.
+ * Default implementation of a {@link TypePath}.
  *
- * @author Tobias Koetter, KNIME GmbH, Konstanz, Germany
+ * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-public enum DataTypeTypeHierarchy implements TypeHierarchy<DataType, DataType> {
+final class DefaultTypePath<T> implements TypePath<T> {
 
-    /**
-     * The singleton instance.
-     */
-    INSTANCE;
+    private final T m_mostSpecific;
 
-    static class DataTypeResolver implements TypeResolver<DataType, DataType> {
+    private final T m_mostGeneral;
 
-        private DataType m_current;
+    private final List<T> m_types;
 
-        @Override
-        public DataType getMostSpecificType() {
-            return m_current;
-        }
-
-        @Override
-        public void accept(final DataType value) {
-            if (m_current == null) {
-                m_current = value;
-            } else if (m_current != value) { //NOSONAR
-                m_current = DataType.getCommonSuperType(m_current, value);
-            }
-        }
-
-        @Override
-        public boolean reachedTop() {
-            return false;
-        }
-
-        @Override
-        public boolean hasType() {
-            return m_current != null;
-        }
-
+    DefaultTypePath(final List<T> types) {
+        m_types = types;
+        m_mostSpecific = types.get(0);
+        m_mostGeneral = types.get(types.size() - 1);
     }
 
     @Override
-    public TypeResolver<DataType, DataType> createResolver() {
-        return new DataTypeResolver();
+    public Iterator<T> iterator() {
+        return m_types.iterator();
     }
 
     @Override
-    public boolean supports(final DataType value) {
-        return true;
+    public T getMostSpecificType() {
+        return m_mostSpecific;
+    }
+
+    @Override
+    public T getMostGeneralType() {
+        return m_mostGeneral;
+    }
+
+    @Override
+    public int size() {
+        return m_types.size();
+    }
+
+    @Override
+    public Stream<T> stream() {
+        return m_types.stream();
     }
 
 }

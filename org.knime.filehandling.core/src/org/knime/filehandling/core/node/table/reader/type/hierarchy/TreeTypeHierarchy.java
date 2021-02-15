@@ -73,7 +73,7 @@ import org.knime.core.node.util.CheckUtils;
  * @noreference non-public API
  * @noinstantiate non-public API
  */
-public final class TreeTypeHierarchy<T, V> implements TypeFocusableTypeHierarchy<T, V> {
+public final class TreeTypeHierarchy<T, V> implements TypeFocusableTypeHierarchy<T, V>, TraversableTypeHierarchy<T, V> {
 
     private final Collection<TreeNode<T, V>> m_leaves;
 
@@ -104,6 +104,17 @@ public final class TreeTypeHierarchy<T, V> implements TypeFocusableTypeHierarchy
         // by definition the root corresponds to the most generic value
         // hence if it doesn't accept value, then no other node does
         return m_root.test(value);
+    }
+
+    @Override
+    public TypePath<T> getSupportingTypes(final V value) {
+        final TreeWalker<T, V> treeWalker = initializeWalker(value);
+        final List<T> supportingTypes = new ArrayList<>();
+        supportingTypes.add(treeWalker.getCurrent().getType());
+        while (!treeWalker.reachedTop()) {
+            supportingTypes.add(treeWalker.advanceOneNode().getType());
+        }
+        return new DefaultTypePath<>(supportingTypes);
     }
 
     /**
@@ -196,7 +207,7 @@ public final class TreeTypeHierarchy<T, V> implements TypeFocusableTypeHierarchy
                 return;
             }
             if (m_walker == null) {
-                m_walker = initializeIterator(value);
+                m_walker = initializeWalker(value);
             } else {
                 m_walker.advanceUntilMatch(value);
             }
@@ -215,17 +226,17 @@ public final class TreeTypeHierarchy<T, V> implements TypeFocusableTypeHierarchy
             return m_walker != null;
         }
 
-        private TreeWalker<T, V> initializeIterator(final V value) {
-            // for each leaf we have to search its path to root and
-            // the deepest node we find that matches is our entry point
-            return m_leaves.stream()//
-                .map(TreeWalker::new)//
-                .map(w -> w.advanceUntilMatch(value))//
-                .max((l, r) -> Integer.compare(l.getCurrent().getDepth(), r.getCurrent().getDepth()))//
-                .orElseThrow(() -> new IllegalStateException(String.format("No match found for %s. This is"
-                    + " illegal because the top most type in a hierarchy must match everything.", value)));
-        }
+    }
 
+    private TreeWalker<T, V> initializeWalker(final V value) {
+        // for each leaf we have to search its path to root and
+        // the deepest node we find that matches is our entry point
+        return m_leaves.stream()//
+            .map(TreeWalker::new)//
+            .map(w -> w.advanceUntilMatch(value))//
+            .max((l, r) -> Integer.compare(l.getCurrent().getDepth(), r.getCurrent().getDepth()))//
+            .orElseThrow(() -> new IllegalStateException(String.format("No match found for %s. This is"
+                + " illegal because the top most type in a hierarchy must match everything.", value)));
     }
 
     /**
@@ -439,7 +450,7 @@ public final class TreeTypeHierarchy<T, V> implements TypeFocusableTypeHierarchy
             if (obj instanceof TreeNode) {
                 // The equals checks below ensure type safety
                 @SuppressWarnings("rawtypes")
-                TreeNode other = (TreeNode)obj;
+                TreeNode other = (TreeNode)obj;// NOSONAR
                 // The last check can be costly as it might check the whole path to root...
                 return m_depth == other.m_depth && m_tester.equals(other.m_tester) && m_parent.equals(other.m_parent);
             } else {

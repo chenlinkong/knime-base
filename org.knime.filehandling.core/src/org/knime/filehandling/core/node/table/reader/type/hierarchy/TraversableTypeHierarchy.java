@@ -44,63 +44,25 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Nov 16, 2020 (Tobias): created
+ *   Feb 10, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.preproc.manipulator.mapping;
-
-import org.knime.core.data.DataType;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
+package org.knime.filehandling.core.node.table.reader.type.hierarchy;
 
 /**
- * {@link TypeHierarchy} used by the Table Manipulator node.
+ * A {@link TypeHierarchy} that traversal.
  *
- * @author Tobias Koetter, KNIME GmbH, Konstanz, Germany
+ * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
+ * @param <T> type used to identify external types
+ * @param <V> type used as values
  */
-public enum DataTypeTypeHierarchy implements TypeHierarchy<DataType, DataType> {
+public interface TraversableTypeHierarchy<T, V> extends TypeHierarchy<T, V> {
 
     /**
-     * The singleton instance.
+     * Calculates all types that support the provided <b>value</b>.
+     *
+     * @param value for which to retrieve the supporting types.
+     * @return the {@link TypePath} for <b>value</b>
      */
-    INSTANCE;
-
-    static class DataTypeResolver implements TypeResolver<DataType, DataType> {
-
-        private DataType m_current;
-
-        @Override
-        public DataType getMostSpecificType() {
-            return m_current;
-        }
-
-        @Override
-        public void accept(final DataType value) {
-            if (m_current == null) {
-                m_current = value;
-            } else if (m_current != value) { //NOSONAR
-                m_current = DataType.getCommonSuperType(m_current, value);
-            }
-        }
-
-        @Override
-        public boolean reachedTop() {
-            return false;
-        }
-
-        @Override
-        public boolean hasType() {
-            return m_current != null;
-        }
-
-    }
-
-    @Override
-    public TypeResolver<DataType, DataType> createResolver() {
-        return new DataTypeResolver();
-    }
-
-    @Override
-    public boolean supports(final DataType value) {
-        return true;
-    }
+    TypePath<T> getSupportingTypes(final V value);
 
 }
