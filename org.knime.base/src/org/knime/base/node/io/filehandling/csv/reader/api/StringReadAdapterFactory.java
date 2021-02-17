@@ -128,16 +128,21 @@ public enum StringReadAdapterFactory implements ReadAdapterFactory<Class<?>, Str
     }
 
     public boolean isValid(final Class<?> type, final ProductionPath productionPath) {
-        return isDefaultPath(productionPath) || !isSpecializedPathAvailable(productionPath);
-    }
-
-    private boolean isSpecializedPathAvailable(final ProductionPath productionPath) {
-        return getDefaultTypeMap().values().contains(productionPath.getDestinationType());
+        return isDefaultPath(productionPath) || isAlternativeUncoveredPath(String.class, productionPath);
     }
 
     private boolean isDefaultPath(final ProductionPath productionPath) {
         final Class<?> sourceType = (Class<?>)productionPath.getSourceType();
         return getDefaultType(sourceType).equals(productionPath.getDestinationType());
+    }
+
+    private boolean isAlternativeUncoveredPath(final Class<?> type, final ProductionPath path) {
+        final Class<?> pathSourceType = (Class<?>)path.getSourceType();
+        return type.equals(pathSourceType) && !isSpecializedPathAvailable(path);
+    }
+
+    private boolean isSpecializedPathAvailable(final ProductionPath productionPath) {
+        return getDefaultTypeMap().values().contains(productionPath.getDestinationType());
     }
 
     private static String readStringFromSource(final StringReadAdapter source,

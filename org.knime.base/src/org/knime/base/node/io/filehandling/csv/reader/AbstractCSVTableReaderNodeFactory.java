@@ -98,9 +98,10 @@ public abstract class AbstractCSVTableReaderNodeFactory
 
     @Override
     protected SelectiveProductionPathProvider<Class<?>> createProductionPathProvider() {
-        ProducerRegistry<Class<?>, ?> producerRegistry = StringReadAdapterFactory.INSTANCE.getProducerRegistry();
-        Function<Class<?>, DataType> defaultTypeProvider = StringReadAdapterFactory.INSTANCE::getDefaultType;
-        BiPredicate<Class<?>, ProductionPath> productionPathFilter = StringReadAdapterFactory.INSTANCE::isValid;
+        final StringReadAdapterFactory readAdapterFactory = StringReadAdapterFactory.INSTANCE;
+        final ProducerRegistry<Class<?>, ?> producerRegistry = readAdapterFactory.getProducerRegistry();
+        final Function<Class<?>, DataType> defaultTypeProvider = readAdapterFactory::getDefaultType;
+        final BiPredicate<Class<?>, ProductionPath> productionPathFilter = readAdapterFactory::isValid;
         return new SelectiveProductionPathProvider<>(//
             producerRegistry, //
             defaultTypeProvider, //
