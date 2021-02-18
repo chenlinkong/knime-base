@@ -185,7 +185,7 @@ class CSVMultiTableReadConfigSerializer
     }
 
     CSVMultiTableReadConfigSerializer() {
-        ProducerRegistry<Class<?>, ?> producerRegistry = StringReadAdapterFactory.INSTANCE.getProducerRegistry();
+        ProducerRegistry<Class<?>, ?> producerRegistry = StringReadAdapterFactory.PRODUCER_REGISTRY;
         m_tableSpecConfigSerializer = TableSpecConfigSerializer//
             .builder(producerRegistry, this, ClassTypeSerializer.INSTANCE)
             .addV43Support()//

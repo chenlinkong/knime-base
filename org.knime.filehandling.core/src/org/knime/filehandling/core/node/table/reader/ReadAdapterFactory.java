@@ -48,9 +48,11 @@
  */
 package org.knime.filehandling.core.node.table.reader;
 
-import org.knime.core.data.DataType;
 import org.knime.core.data.convert.map.ProducerRegistry;
+import org.knime.core.data.convert.map.ProductionPath;
+import org.knime.filehandling.core.node.table.reader.config.MultiTableReadConfig;
 import org.knime.filehandling.core.node.table.reader.read.Read;
+import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
 
 /**
  * Factory that bundles a concrete {@link ReadAdapter} implementation with a compatible {@link ProducerRegistry}.
@@ -72,18 +74,13 @@ public interface ReadAdapterFactory<T, V> {
     ReadAdapter<T, V> createReadAdapter();
 
     /**
-     * Returns a {@link ProducerRegistry} compatible with the {@link ReadAdapter ReadAdapters} created by
-     * {@link #createReadAdapter()}.
+     * Returns the {@link ProductionPathProvider} to use for retrieving {@link ProductionPath ProductionPaths}.
+     * @param config the current {@link MultiTableReadConfig}
      *
-     * @return a compatible {@link ProducerRegistry}
+     * @return the {@link ProductionPathProvider} for retrieving {@link ProductionPath ProductionPaths}
      */
-    ProducerRegistry<T, ? extends ReadAdapter<T, V>> getProducerRegistry();
+    ProductionPathProvider<T> getProductionPathProvider();
 
-    /**
-     * Returns the default {@link DataType} for the provided external type.
-     *
-     * @param type external type for which the default {@link DataType} is required
-     * @return the default {@link DataType} for <b>type</b>
-     */
-    DataType getDefaultType(final T type);
+    TypeHierarchy<T, T> getTypeHierarchy();
+
 }

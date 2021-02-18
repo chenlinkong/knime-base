@@ -55,6 +55,8 @@ import java.time.LocalTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.knime.core.data.DataType;
 import org.knime.core.data.blob.BinaryObjectDataCell;
@@ -73,9 +75,14 @@ import org.knime.core.data.def.DoubleCell;
 import org.knime.core.data.def.IntCell;
 import org.knime.core.data.def.LongCell;
 import org.knime.core.data.def.StringCell;
+import org.knime.filehandling.core.node.table.reader.ProductionPathProvider;
 import org.knime.filehandling.core.node.table.reader.ReadAdapter;
 import org.knime.filehandling.core.node.table.reader.ReadAdapter.ReadAdapterParams;
 import org.knime.filehandling.core.node.table.reader.ReadAdapterFactory;
+import org.knime.filehandling.core.node.table.reader.SelectiveProductionPathProvider;
+import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
+import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
+import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeTester;
 
 /**
  * Factory for StringReadAdapter objects.
@@ -89,7 +96,37 @@ public enum StringReadAdapterFactory implements ReadAdapterFactory<Class<?>, Str
          */
         INSTANCE;
 
-    private static final ProducerRegistry<Class<?>, StringReadAdapter> PRODUCER_REGISTRY = initializeProducerRegistry();
+    /**
+     * {@link TreeTypeHierarchy} that defines the hierarchy of data types while reading from csv files
+     */
+    public static final TreeTypeHierarchy<Class<?>, String> TYPE_HIERARCHY =
+        TreeTypeHierarchy.builder(createTypeTester(String.class, t -> {
+        })).addType(String.class, createTypeTester(Double.class, Double::parseDouble))
+            .addType(Double.class, createTypeTester(Long.class, Long::parseLong))
+            .addType(Long.class, createTypeTester(Integer.class, Integer::parseInt)).build();
+
+    private static final TreeTypeHierarchy<Class<?>, Class<?>> TYPE_TYPE_HIERARCHY =
+        TYPE_HIERARCHY.createTypeFocusedHierarchy();
+
+    static TypeTester<Class<?>, String> createTypeTester(final Class<?> type, final Consumer<String> tester) {
+        return TypeTester.createTypeTester(type, consumerToPredicate(tester));
+    }
+
+    private static Predicate<String> consumerToPredicate(final Consumer<String> tester) {
+        return s -> {
+            try {
+                tester.accept(s);
+                return true;
+            } catch (NumberFormatException ex) {
+                return false;
+            }
+        };
+    }
+
+    /**
+     * The CSV {@link ProducerRegistry}.
+     */
+    public static final ProducerRegistry<Class<?>, StringReadAdapter> PRODUCER_REGISTRY = initializeProducerRegistry();
 
     private static final Map<Class<?>, DataType> DEFAULT_TYPES = createDefaultTypeMap();
 
@@ -246,11 +283,6 @@ public enum StringReadAdapterFactory implements ReadAdapterFactory<Class<?>, Str
         return new StringReadAdapter();
     }
 
-    @Override
-    public ProducerRegistry<Class<?>, StringReadAdapter> getProducerRegistry() {
-        return PRODUCER_REGISTRY;
-    }
-
     /**
      * Returns the {@link Map} providing the default {@link DataType DataTypes}.
      *
@@ -262,13 +294,21 @@ public enum StringReadAdapterFactory implements ReadAdapterFactory<Class<?>, Str
     }
 
     /**
-     * {@inheritDoc}
-     *
      * @noreference This enum method is not intended to be referenced by clients.
      */
-    @Override
     public DataType getDefaultType(final Class<?> type) {
         return DEFAULT_TYPES.get(type);
+    }
+
+    @Override
+    public ProductionPathProvider<Class<?>> getProductionPathProvider() {
+        return new SelectiveProductionPathProvider<>(PRODUCER_REGISTRY, this::getDefaultType, TYPE_TYPE_HIERARCHY,
+            this::isValid);
+    }
+
+    @Override
+    public TypeHierarchy<Class<?>, Class<?>> getTypeHierarchy() {
+        return TYPE_TYPE_HIERARCHY;
     }
 
 }

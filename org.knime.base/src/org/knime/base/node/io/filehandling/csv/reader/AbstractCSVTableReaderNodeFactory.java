@@ -48,21 +48,12 @@
  */
 package org.knime.base.node.io.filehandling.csv.reader;
 
-import java.util.function.BiPredicate;
-import java.util.function.Function;
-
 import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReader;
 import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
 import org.knime.base.node.io.filehandling.csv.reader.api.StringReadAdapterFactory;
-import org.knime.core.data.DataType;
-import org.knime.core.data.convert.map.ProducerRegistry;
-import org.knime.core.data.convert.map.ProductionPath;
 import org.knime.core.node.context.NodeCreationConfiguration;
 import org.knime.filehandling.core.node.table.reader.AbstractTableReaderNodeFactory;
 import org.knime.filehandling.core.node.table.reader.ReadAdapterFactory;
-import org.knime.filehandling.core.node.table.reader.SelectiveProductionPathProvider;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
 
 /**
  * Abstract node factory for the CSV readers based on the new table reader framework.
@@ -73,17 +64,9 @@ import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarch
 public abstract class AbstractCSVTableReaderNodeFactory
     extends AbstractTableReaderNodeFactory<CSVTableReaderConfig, Class<?>, String> {
 
-    private static final TreeTypeHierarchy<Class<?>, Class<?>> TYPE_HIERARCHY =
-        CSVTableReader.TYPE_HIERARCHY.createTypeFocusedHierarchy();
-
     @Override
     protected ReadAdapterFactory<Class<?>, String> getReadAdapterFactory() {
         return StringReadAdapterFactory.INSTANCE;
-    }
-
-    @Override
-    protected TypeHierarchy<Class<?>, Class<?>> getTypeHierarchy() {
-        return TYPE_HIERARCHY;
     }
 
     @Override
@@ -94,19 +77,6 @@ public abstract class AbstractCSVTableReaderNodeFactory
     @Override
     protected String extractRowKey(final String value) {
         return value;
-    }
-
-    @Override
-    protected SelectiveProductionPathProvider<Class<?>> createProductionPathProvider() {
-        final StringReadAdapterFactory readAdapterFactory = StringReadAdapterFactory.INSTANCE;
-        final ProducerRegistry<Class<?>, ?> producerRegistry = readAdapterFactory.getProducerRegistry();
-        final Function<Class<?>, DataType> defaultTypeProvider = readAdapterFactory::getDefaultType;
-        final BiPredicate<Class<?>, ProductionPath> productionPathFilter = readAdapterFactory::isValid;
-        return new SelectiveProductionPathProvider<>(//
-            producerRegistry, //
-            defaultTypeProvider, //
-            TYPE_HIERARCHY, //
-            productionPathFilter);
     }
 
     @Override

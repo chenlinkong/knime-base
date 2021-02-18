@@ -50,7 +50,6 @@ package org.knime.filehandling.core.node.table.reader;
 
 import java.util.Optional;
 
-import org.knime.core.data.convert.map.ProducerRegistry;
 import org.knime.core.data.convert.map.ProductionPath;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.ConfigurableNodeFactory;
@@ -66,7 +65,6 @@ import org.knime.filehandling.core.node.table.reader.paths.SourceSettings;
 import org.knime.filehandling.core.node.table.reader.preview.dialog.AbstractTableReaderNodeDialog;
 import org.knime.filehandling.core.node.table.reader.rowkey.DefaultRowKeyGeneratorContextFactory;
 import org.knime.filehandling.core.node.table.reader.rowkey.GenericRowKeyGeneratorContextFactory;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
 import org.knime.filehandling.core.port.FileSystemPortObject;
 
 /**
@@ -118,13 +116,6 @@ public abstract class GenericAbstractTableReaderNodeFactory<I, C extends ReaderS
      */
     protected abstract String extractRowKey(V value);
 
-    /**
-     * Returns the {@link TypeHierarchy} of the external types.
-     *
-     * @return the type hierarchy of the external types
-     */
-    protected abstract TypeHierarchy<T, T> getTypeHierarchy();
-
     @Override
     public TableReaderNodeModel<I, C, T> createNodeModel(final NodeCreationConfiguration creationConfig) {
         final StorableMultiTableReadConfig<C, T> config = createConfig(creationConfig);
@@ -150,7 +141,7 @@ public abstract class GenericAbstractTableReaderNodeFactory<I, C extends ReaderS
     @Override
     protected NodeDialogPane createNodeDialogPane(final NodeCreationConfiguration creationConfig) {
         final MultiTableReadFactory<I, C, T> readFactory = createMultiTableReadFactory(createReader());
-        final ProductionPathProvider<T> productionPathProvider = createProductionPathProvider();
+        final ProductionPathProvider<T> productionPathProvider = getReadAdapterFactory().getProductionPathProvider();
         return createNodeDialogPane(creationConfig, readFactory, productionPathProvider);
     }
 
@@ -160,10 +151,9 @@ public abstract class GenericAbstractTableReaderNodeFactory<I, C extends ReaderS
      *
      * @return the default production path provider
      */
-    protected ProductionPathProvider<T> createProductionPathProvider() {
+    private final ProductionPathProvider<T> createProductionPathProvider() {
         final ReadAdapterFactory<T, V> readAdapterFactory = getReadAdapterFactory();
-        return new DefaultProductionPathProvider<>(readAdapterFactory.getProducerRegistry(),
-            readAdapterFactory::getDefaultType);
+        return readAdapterFactory.getProductionPathProvider();
     }
 
     /**
@@ -191,8 +181,8 @@ public abstract class GenericAbstractTableReaderNodeFactory<I, C extends ReaderS
         final ProductionPathProvider<T> productionPathProvider = createProductionPathProvider();
         final GenericRowKeyGeneratorContextFactory<I, V> rowKeyGenFactory =
             new DefaultRowKeyGeneratorContextFactory<>(this::extractRowKey, "File");
-        return new DefaultMultiTableReadFactory<>(getTypeHierarchy(), rowKeyGenFactory, reader, productionPathProvider,
-            readAdapterFactory::createReadAdapter);
+        return new DefaultMultiTableReadFactory<>(getReadAdapterFactory().getTypeHierarchy(), rowKeyGenFactory, reader,
+            productionPathProvider, readAdapterFactory::createReadAdapter);
     }
 
     @Override
@@ -222,15 +212,6 @@ public abstract class GenericAbstractTableReaderNodeFactory<I, C extends ReaderS
     public final NodeView<TableReaderNodeModel<I, C, T>> createNodeView(final int viewIndex,
         final TableReaderNodeModel<I, C, T> nodeModel) {
         return null;
-    }
-
-    /**
-     * Returns the {@link ProducerRegistry} used by the {@link ReadAdapterFactory}.
-     *
-     * @return the {@link ProducerRegistry}
-     */
-    protected ProducerRegistry<T, ? extends ReadAdapter<T, V>> getProducerRegistry() {
-        return getReadAdapterFactory().getProducerRegistry();
     }
 
     @Override

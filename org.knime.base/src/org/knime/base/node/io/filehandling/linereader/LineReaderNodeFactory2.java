@@ -61,9 +61,6 @@ import org.knime.filehandling.core.node.table.reader.ReadAdapterFactory;
 import org.knime.filehandling.core.node.table.reader.TableReader;
 import org.knime.filehandling.core.node.table.reader.paths.PathSettings;
 import org.knime.filehandling.core.node.table.reader.preview.dialog.AbstractPathTableReaderNodeDialog;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeTester;
 
 /**
  * Node factory for the line reader node.
@@ -71,13 +68,6 @@ import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeTester;
  * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
  */
 public final class LineReaderNodeFactory2 extends AbstractTableReaderNodeFactory<LineReaderConfig2, Class<?>, String> {
-
-    private static final TypeHierarchy<Class<?>, Class<?>> TYPE_HIERARCHY =
-        TreeTypeHierarchy.builder(createTypeTester(String.class)).build();
-
-    private static TypeTester<Class<?>, Class<?>> createTypeTester(final Class<?> type) {
-        return TypeTester.createTypeTester(type, s -> true);
-    }
 
     @Override
     protected PathSettings createPathSettings(final NodeCreationConfiguration nodeCreationConfig) {
@@ -99,11 +89,6 @@ public final class LineReaderNodeFactory2 extends AbstractTableReaderNodeFactory
     @Override
     protected String extractRowKey(final String value) {
         return value;
-    }
-
-    @Override
-    protected TypeHierarchy<Class<?>, Class<?>> getTypeHierarchy() {
-        return TYPE_HIERARCHY;
     }
 
     @Override

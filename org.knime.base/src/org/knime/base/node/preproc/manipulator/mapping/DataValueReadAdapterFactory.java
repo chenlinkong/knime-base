@@ -50,9 +50,11 @@ package org.knime.base.node.preproc.manipulator.mapping;
 
 import org.knime.core.data.DataType;
 import org.knime.core.data.DataValue;
-import org.knime.core.data.convert.map.ProducerRegistry;
+import org.knime.filehandling.core.node.table.reader.DefaultProductionPathProvider;
+import org.knime.filehandling.core.node.table.reader.ProductionPathProvider;
 import org.knime.filehandling.core.node.table.reader.ReadAdapter;
 import org.knime.filehandling.core.node.table.reader.ReadAdapterFactory;
+import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
 
 /**
  * Factory for DataValueReadAdapter objects.
@@ -65,10 +67,6 @@ public enum DataValueReadAdapterFactory implements ReadAdapterFactory<DataType, 
          */
         INSTANCE;
 
-    @Override
-    public DataType getDefaultType(final DataType type) {
-        return type;
-    }
 
     @Override
     public ReadAdapter<DataType, DataValue> createReadAdapter() {
@@ -76,7 +74,16 @@ public enum DataValueReadAdapterFactory implements ReadAdapterFactory<DataType, 
     }
 
     @Override
-    public ProducerRegistry<DataType, ? extends ReadAdapter<DataType, DataValue>> getProducerRegistry() {
-        return DataTypeProducerRegistry.INSTANCE;
+    public ProductionPathProvider<DataType> getProductionPathProvider() {
+        return new DefaultProductionPathProvider<>(DataTypeProducerRegistry.INSTANCE, this::getDefaultType);
+    }
+
+    private DataType getDefaultType(final DataType type) {
+        return type;
+    }
+
+    @Override
+    public TypeHierarchy<DataType, DataType> getTypeHierarchy() {
+        return DataTypeTypeHierarchy.INSTANCE;
     }
 }

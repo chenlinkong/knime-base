@@ -86,7 +86,6 @@ import org.knime.core.node.streamable.RowInput;
 import org.knime.core.node.streamable.RowOutput;
 import org.knime.core.node.streamable.StreamableOperator;
 import org.knime.filehandling.core.node.table.reader.DefaultMultiTableReadFactory;
-import org.knime.filehandling.core.node.table.reader.DefaultProductionPathProvider;
 import org.knime.filehandling.core.node.table.reader.MultiTableReader;
 import org.knime.filehandling.core.node.table.reader.ProductionPathProvider;
 import org.knime.filehandling.core.node.table.reader.ReadAdapterFactory;
@@ -137,9 +136,7 @@ final class TableManipulatorNodeModel extends NodeModel {
     }
 
     static ProductionPathProvider<DataType> createProductionPathProvider() {
-        final ReadAdapterFactory<DataType, DataValue> readAdapterFactory = DataValueReadAdapterFactory.INSTANCE;
-        return new DefaultProductionPathProvider<>(readAdapterFactory.getProducerRegistry(),
-            readAdapterFactory::getDefaultType);
+        return DataValueReadAdapterFactory.INSTANCE.getProductionPathProvider();
     }
 
     @Override

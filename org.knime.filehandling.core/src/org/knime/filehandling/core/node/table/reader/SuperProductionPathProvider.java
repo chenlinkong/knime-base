@@ -88,10 +88,10 @@ public final class SuperProductionPathProvider<T> implements ProductionPathProvi
      * @param typeHierarchy the {@link TypeHierarchy} of the reader
      * @param hasSpecializedPath a {@link Predicate} that checks if there is a specialized path for a {@link DataType}
      */
-    public SuperProductionPathProvider(final ReadAdapterFactory<T, ?> readAdapterFactory,
+    public SuperProductionPathProvider(final ProducerRegistry<T, ?> producerRegistry, final Function<T, DataType> defaultDataTypeProvider,
         final TreeTypeHierarchy<T, T> typeHierarchy, final Predicate<DataType> hasSpecializedPath) {
-        m_producerRegistry = readAdapterFactory.getProducerRegistry();
-        m_defaultDataTypeProvider = readAdapterFactory::getDefaultType;
+        m_producerRegistry = producerRegistry;
+        m_defaultDataTypeProvider = defaultDataTypeProvider;
         m_typeHierarchy = typeHierarchy;
         m_hasSpecializedPath = hasSpecializedPath;
     }

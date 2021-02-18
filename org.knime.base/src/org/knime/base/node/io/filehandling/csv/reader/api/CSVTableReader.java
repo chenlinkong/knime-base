@@ -48,6 +48,8 @@
  */
 package org.knime.base.node.io.filehandling.csv.reader.api;
 
+import static org.knime.base.node.io.filehandling.csv.reader.api.StringReadAdapterFactory.createTypeTester;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,9 +58,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import org.knime.base.node.io.filehandling.csv.reader.OSIndependentNewLineReader;
 import org.knime.base.node.io.filehandling.streams.CompressionAwareCountingInputStream;
@@ -74,7 +74,6 @@ import org.knime.filehandling.core.node.table.reader.spec.TableSpecGuesser;
 import org.knime.filehandling.core.node.table.reader.spec.TypedReaderTableSpec;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeTester;
 import org.knime.filehandling.core.util.BomEncodingUtils;
 
 import com.univocity.parsers.common.TextParsingException;
@@ -93,25 +92,15 @@ public final class CSVTableReader implements TableReader<CSVTableReaderConfig, C
     /**
      * {@link TreeTypeHierarchy} that defines the hierarchy of data types while reading from csv files
      */
-    public static final TreeTypeHierarchy<Class<?>, String> TYPE_HIERARCHY =
-        TreeTypeHierarchy.builder(createTypeTester(String.class, t -> {
-        })).addType(String.class, createTypeTester(Double.class, Double::parseDouble))
-            .addType(Double.class, createTypeTester(Long.class, Long::parseLong))
-            .addType(Long.class, createTypeTester(Integer.class, Integer::parseInt)).build();
+    public static final TypeHierarchy<Class<?>, String> TYPE_HIERARCHY = StringReadAdapterFactory.TYPE_HIERARCHY;
 
-    private static TypeTester<Class<?>, String> createTypeTester(final Class<?> type, final Consumer<String> tester) {
-        return TypeTester.createTypeTester(type, consumerToPredicate(tester));
-    }
-
-    private static Predicate<String> consumerToPredicate(final Consumer<String> tester) {
-        return s -> {
-            try {
-                tester.accept(s);
-                return true;
-            } catch (NumberFormatException ex) {
-                return false;
-            }
-        };
+    private static TypeHierarchy<Class<?>, String> createHierarchy(final CSVTableReaderConfig config) {
+        final DoubleParser doubleParser = new DoubleParser(config);
+        final IntegerParser integerParser = new IntegerParser(config);
+        return TreeTypeHierarchy.builder(createTypeTester(String.class, t -> {
+        })).addType(String.class, createTypeTester(Double.class, doubleParser::parse))
+            .addType(Double.class, createTypeTester(Long.class, integerParser::parseLong))
+            .addType(Long.class, createTypeTester(Integer.class, integerParser::parseInt)).build();
     }
 
     @SuppressWarnings("resource") // closing the read is the responsibility of the caller
@@ -150,15 +139,6 @@ public final class CSVTableReader implements TableReader<CSVTableReaderConfig, C
         createGuesser(final TableReadConfig<CSVTableReaderConfig> config) {
         final CSVTableReaderConfig csvConfig = config.getReaderSpecificConfig();
         return new TableSpecGuesser<>(createHierarchy(csvConfig), Function.identity());
-    }
-
-    private static TypeHierarchy<Class<?>, String> createHierarchy(final CSVTableReaderConfig config) {
-        final DoubleParser doubleParser = new DoubleParser(config);
-        final IntegerParser integerParser = new IntegerParser(config);
-        return TreeTypeHierarchy.builder(createTypeTester(String.class, t -> {
-        })).addType(String.class, createTypeTester(Double.class, doubleParser::parse))
-            .addType(Double.class, createTypeTester(Long.class, integerParser::parseLong))
-            .addType(Long.class, createTypeTester(Integer.class, integerParser::parseInt)).build();
     }
 
     /**

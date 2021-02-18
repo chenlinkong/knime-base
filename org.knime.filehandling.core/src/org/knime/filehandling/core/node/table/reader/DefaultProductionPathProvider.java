@@ -85,15 +85,6 @@ public final class DefaultProductionPathProvider<T> implements ProductionPathPro
         m_defaultKnimeTypes = defaultKnimeFunction;
     }
 
-    /**
-     * Constructs an instance from a {@link ReadAdapterFactory}.
-     *
-     * @param readAdapterFactory providing the {@link ProducerRegistry} and default type map
-     */
-    public DefaultProductionPathProvider(final ReadAdapterFactory<T, ?> readAdapterFactory) {
-        this(readAdapterFactory.getProducerRegistry(), readAdapterFactory::getDefaultType);
-    }
-
     @Override
     public ProductionPath getDefaultProductionPath(final T externalType) {
         final DataType knimeType = m_defaultKnimeTypes.apply(externalType);
