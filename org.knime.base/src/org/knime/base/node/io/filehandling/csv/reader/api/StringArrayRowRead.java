@@ -44,47 +44,63 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Nov 15, 2020 (Tobias): created
+ *   Feb 26, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.filehandling.core.node.table.reader.util;
+package org.knime.base.node.io.filehandling.csv.reader.api;
 
-import org.knime.core.data.DataRow;
-import org.knime.core.data.v2.RowWriteCursor;
-import org.knime.core.node.ExecutionMonitor;
-import org.knime.core.node.streamable.RowOutput;
-import org.knime.filehandling.core.node.table.reader.randomaccess.RandomAccessible;
-import org.knime.filehandling.core.node.table.reader.read.Read;
+import org.knime.core.data.DataValue;
+import org.knime.core.data.RowKeyValue;
+import org.knime.core.data.StringValue;
+import org.knime.core.data.v2.RowRead;
 
 /**
- * Performs the actual reading of an individual table.
+ * A {@link RowRead} that is based on a String array.
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
- * @author Tobias Koetter, KNIME GmbH, Konstanz, Germany
- * @param <I> the item type to read from
- * @param <V> the type representing values
  */
-public interface IndividualTableReader<I, V> {
+final class StringArrayRowRead implements RowRead {
 
-    /**
-     * Reads all {@link RandomAccessible randomAccessibles} in {@link Read read}, converts them to {@link DataRow
-     * DataRows} and pushes them to {@link RowOutput output}.
-     *
-     * @param read to read from
-     * @param output to push to (must be compatible i.e. have the same spec)
-     * @param progress used for cancellation and progress reporting (provided the size of the read is known)
-     * @throws Exception if something goes astray
-     */
-    void fillOutput(Read<I, V> read, RowOutput output, ExecutionMonitor progress) throws Exception;
+    private String[] m_array;
 
-    void fillRowCursor(Read<I, V> read, RowWriteCursor cursor, ExecutionMonitor progress) throws Exception;
+    private final int m_rowKeyIdx;
 
-    /**
-     * Converts the random accessible to a data row.
-     *
-     * @param randomAccessible the random accessible to convert
-     * @return the converted data row
-     * @throws Exception if something goes astray
-     */
-    DataRow toRow(RandomAccessible<V> randomAccessible) throws Exception;
+    StringArrayRowRead(final int rowKeyIdx) {
+        m_rowKeyIdx = rowKeyIdx;
+    }
+
+    void setArray(final String[] array) {
+        m_array = array;
+    }
+
+    @Override
+    public int getNumColumns() {
+        return m_array.length;
+    }
+
+    @Override
+    public <D extends DataValue> D getValue(final int index) {
+        return (D)new StringValue() {
+
+            @Override
+            public String getStringValue() {
+                return m_array[mapIdx(index)];
+            }
+
+        };
+    }
+
+    @Override
+    public boolean isMissing(final int index) {
+        return m_array[mapIdx(index)] == null;
+    }
+
+    private int mapIdx(final int index) {
+        return index < m_rowKeyIdx ? index : (index + 1);
+    }
+
+    @Override
+    public RowKeyValue getRowKey() {
+        return () -> m_array[m_rowKeyIdx];
+    }
 
 }

@@ -50,8 +50,13 @@ package org.knime.filehandling.core.node.table.reader;
 
 import java.util.OptionalLong;
 
+import org.knime.core.data.DataCell;
 import org.knime.core.data.DataRow;
+import org.knime.core.data.DataValue;
 import org.knime.core.data.RowKey;
+import org.knime.core.data.v2.RowWrite;
+import org.knime.core.data.v2.RowWriteCursor;
+import org.knime.core.data.v2.WriteValue;
 import org.knime.core.node.ExecutionMonitor;
 import org.knime.core.node.streamable.RowOutput;
 import org.knime.filehandling.core.node.table.reader.randomaccess.RandomAccessible;
@@ -134,6 +139,27 @@ public final class DefaultIndividualTableReader<I, V> implements IndividualTable
             final long finalI = i;
             progress.setProgress(read.getProgress() / doubleSize, () -> String.format("Reading row %s", finalI));
             output.push(toRow(next));
+        }
+    }
+
+    @Override
+    public void fillRowCursor(final Read<I, V> read, final RowWriteCursor cursor, final ExecutionMonitor progress) throws Exception {
+        // TODO progress
+        RandomAccessible<V> ra = read.next();
+        while (ra != null) {
+            // TODO what if cursor.canForward() returns false?
+            final RowWrite rowWrite = cursor.forward();
+            final DataRow row = toRow(ra);
+            rowWrite.setRowKey(row.getKey().getString());
+            for (int i = 0; i < row.getNumCells(); i++) {
+                final DataCell cell = row.getCell(i);
+                if (cell.isMissing()) {
+                    rowWrite.setMissing(i);
+                } else {
+                    WriteValue<DataValue> value = rowWrite.getWriteValue(i);
+                    value.setValue(cell);
+                }
+            }
         }
     }
 

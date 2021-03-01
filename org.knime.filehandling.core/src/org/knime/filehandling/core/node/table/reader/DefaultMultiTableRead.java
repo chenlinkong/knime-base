@@ -54,6 +54,10 @@ import java.util.function.Supplier;
 
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.filestore.FileStoreFactory;
+import org.knime.core.data.v2.RowContainer;
+import org.knime.core.data.v2.RowWriteCursor;
+import org.knime.core.node.BufferedDataTable;
+import org.knime.core.node.ExecutionContext;
 import org.knime.core.node.ExecutionMonitor;
 import org.knime.core.node.streamable.RowOutput;
 import org.knime.filehandling.core.node.table.reader.config.TableReadConfig;
@@ -141,6 +145,29 @@ public final class DefaultMultiTableRead<I, T, V> implements MultiTableRead<T> {
             progress.setProgress(1.0);
         }
         output.close();
+    }
+
+    public BufferedDataTable readTable(final ExecutionContext exec) throws Exception {
+        final FileStoreFactory fsFactory = FileStoreFactory.createFileStoreFactory(exec);
+        try (final RowContainer rowContainer = exec.createRowContainer(m_outputSpec);
+                final RowWriteCursor cursor = rowContainer.createCursor()) {
+        final BiFunction<I, FileStoreFactory, ? extends IndividualTableReader<I, V>> individualTableReaderFactory =
+                m_individualTableReaderFactorySupplier.get();
+            for (I item : m_sourceGroup) {
+                exec.checkCanceled();
+                final ExecutionMonitor progress = exec.createSubProgress(1.0 / m_sourceGroup.size());
+                final IndividualTableReader<I, V> reader = individualTableReaderFactory.apply(item, fsFactory);
+                try (final Read<I, V> read = m_readFn.apply(item)) {
+                    reader.fillRowCursor(read, cursor, progress);
+                } catch (TypeMapperException e) {
+                    processAndThrowTypeMapperException(item, e);
+                }
+                progress.setProgress(1.0);
+            }
+            return rowContainer.finish();
+        } finally {
+            fsFactory.close();
+        }
     }
 
     @SuppressWarnings("resource")
