@@ -51,6 +51,7 @@ package org.knime.filehandling.utility.nodes.pathtourl;
 import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,7 +61,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -85,7 +85,9 @@ import org.knime.core.node.defaultnodesettings.SettingsModelString;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.util.SwingWorkerWithContext;
 import org.knime.filehandling.core.connections.DefaultFSLocationSpec;
+import org.knime.filehandling.core.connections.FSCategory;
 import org.knime.filehandling.core.connections.FSConnection;
+import org.knime.filehandling.core.connections.FSLocationSpec;
 import org.knime.filehandling.core.connections.uriexport.URIExporter;
 import org.knime.filehandling.core.connections.uriexport.URIExporterID;
 import org.knime.filehandling.core.connections.uriexport.URIExporterIDs;
@@ -128,7 +130,7 @@ public class PathToUrlNodeDialog extends NodeDialogPane {
 
     private final JRadioButton m_replaceColumnRadio;
 
-    private NodeSettingsRO m_nodeSettings;
+    private NodeSettingsRO m_nodeSettingsRO;
 
     private PortObjectSpec[] m_portObjectSpecs;
 
@@ -189,7 +191,6 @@ public class PathToUrlNodeDialog extends NodeDialogPane {
      */
     @SuppressWarnings("unchecked")
     private void updateUriExporterSettingsPanel() {
-
         URIExporter uriExporter = m_uriExporterSelectorPanel.getSelectedURIExporter();
         m_selectedUriExporterSettingsPanel = (URIExporterPanel<URIExporter>)uriExporter.getPanel();
         m_selectedUriExporterDescComponent.setText(uriExporter.getDescription());
@@ -199,7 +200,6 @@ public class PathToUrlNodeDialog extends NodeDialogPane {
             final Component uriSettingsPanel = createUriExporterSettings(m_uriExporterSettingsPanel);
             uriSettingsPanel.repaint();
         }
-
     }
 
     /**
@@ -387,7 +387,7 @@ public class PathToUrlNodeDialog extends NodeDialogPane {
 
             if (settings.containsKey(URIExporter.CFG_URI_EXPORTER_SETTINGS)) {
                 //hold reference to NodeSettingsRO & PortObjectSpec to be used in onOpen() call
-                m_nodeSettings = settings.getNodeSettings(URIExporter.CFG_URI_EXPORTER_SETTINGS);
+                m_nodeSettingsRO = settings.getNodeSettings(URIExporter.CFG_URI_EXPORTER_SETTINGS);
             }
 
         } catch (InvalidSettingsException ex) {
@@ -401,7 +401,7 @@ public class PathToUrlNodeDialog extends NodeDialogPane {
     @Override
     public void onOpen() {
         try {
-            updateListOfUriExporters(m_portObjectSpecs, m_nodeSettings);
+            updateListOfUriExporters(m_portObjectSpecs, m_nodeSettingsRO);
         } catch (InvalidSettingsException e) {
             LOGGER.error(e.getMessage(), e);
         }
@@ -490,36 +490,50 @@ public class PathToUrlNodeDialog extends NodeDialogPane {
         private List<FSConnection> getListOfConnections(final PortObjectSpec[] specs,
             final DataColumnSpec pathColumnSpec) throws InvalidSettingsException {
 
-            //if file system port is connected
-            if (m_config.getFileSystemPortIndex() >= 0) {
+            //use metadata from FSLocation columns meta data
+            final Optional<FSLocationValueMetaData> optionalFSLocMetaData =
+                pathColumnSpec.getMetaDataOfType(FSLocationValueMetaData.class);
+            if (optionalFSLocMetaData.isPresent()) {
+                final FSLocationValueMetaData fsLocMetaData = optionalFSLocMetaData.get();
+                final Set<DefaultFSLocationSpec> setOflocationSpecs = fsLocMetaData.getFSLocationSpecs();
+                List<FSConnection> listOfConnections = new ArrayList<>();
 
+                if (!setOflocationSpecs.isEmpty()) {
+                    for (final FSLocationSpec locationSpec : setOflocationSpecs) {
+                        listOfConnections.add(getRelevantFSConnection(specs, locationSpec).orElseThrow(
+                            () -> new InvalidSettingsException(String.format("Failed to initialize Connection for %s.",
+                                locationSpec.getFSCategory().getLabel()))));
+                    }
+                }
+                return listOfConnections;
+            }
+
+            return Arrays.asList();
+        }
+
+        private Optional<FSConnection> getRelevantFSConnection(final PortObjectSpec[] specs,
+            final FSLocationSpec locationSpec) throws InvalidSettingsException {
+
+            if (locationSpec.getFSCategory() == FSCategory.CONNECTED) {
+
+                if (m_config.getFileSystemPortIndex() == -1) {
+                    //if file system port is not connected
+                    throw new InvalidSettingsException("The connection on File System port is not connected.");
+                }
                 try (FSConnection fsConnection = FileSystemPortObjectSpec
                     .getFileSystemConnection(specs, m_config.getFileSystemPortIndex()).orElse(null)) {
                     if (fsConnection != null) {
-                        return Arrays.asList(fsConnection);
+                        return Optional.of(fsConnection);
                     }
                 } catch (IOException ex) {
                     //do nothing
                     throw new InvalidSettingsException(ex.getMessage(), ex);
                 }
             } else {
-                //use metadata from FSLocation columns meta data
-                final Optional<FSLocationValueMetaData> optionalFSLocMetaData =
-                    pathColumnSpec.getMetaDataOfType(FSLocationValueMetaData.class);
-                if (optionalFSLocMetaData.isPresent()) {
-                    final FSLocationValueMetaData fsLocMetaData = optionalFSLocMetaData.get();
-                    final Set<DefaultFSLocationSpec> setOflocationSpecs = fsLocMetaData.getFSLocationSpecs();
-
-                    if (!setOflocationSpecs.isEmpty()) {
-                        return setOflocationSpecs.stream().map(PathToUrlNodeConfig::getFSConnectionWithFakePath)
-                            .filter(Optional::isPresent).map(Optional::get).collect(Collectors.toList());
-                    } else {
-                        throw new InvalidSettingsException("Error initializing a valid file system connection.");
-                    }
-
-                }
+                return PathToUrlNodeConfig.getFSConnectionWithFakePath(locationSpec);
             }
-            return Arrays.asList();
+
+            return Optional.empty();
         }
 
         /**

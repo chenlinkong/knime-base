@@ -90,7 +90,6 @@ import org.knime.filehandling.core.connections.location.FSPathProviderFactory;
 import org.knime.filehandling.core.connections.uriexport.URIExporter;
 import org.knime.filehandling.core.connections.uriexport.URIExporterID;
 import org.knime.filehandling.core.data.location.FSLocationValue;
-import org.knime.filehandling.core.data.location.cell.SimpleFSLocationCell;
 import org.knime.filehandling.core.port.FileSystemPortObjectSpec;
 import org.knime.filehandling.core.util.FSLocationColumnUtils;
 
@@ -372,9 +371,7 @@ public class PathToUrlNodeModel extends NodeModel {
 
             DataCell uriCell;
             final DataCell tempCell = row.getCell(m_colIdx);
-
-            final SimpleFSLocationCell incomingPathCell = (SimpleFSLocationCell)tempCell;
-            final FSLocation fsLocation = incomingPathCell.getFSLocation();
+            final FSLocation fsLocation = ((FSLocationValue)tempCell).getFSLocation();
 
             if (m_fsConnection == null
                 && FSCategory.valueOf(fsLocation.getFileSystemCategory()) == FSCategory.CONNECTED) {
