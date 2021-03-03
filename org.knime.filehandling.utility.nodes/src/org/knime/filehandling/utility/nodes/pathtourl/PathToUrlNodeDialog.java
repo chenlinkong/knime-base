@@ -52,7 +52,6 @@ import java.awt.Component;
 import java.awt.GridBagLayout;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -493,22 +492,21 @@ public class PathToUrlNodeDialog extends NodeDialogPane {
             //use metadata from FSLocation columns meta data
             final Optional<FSLocationValueMetaData> optionalFSLocMetaData =
                 pathColumnSpec.getMetaDataOfType(FSLocationValueMetaData.class);
+            List<FSConnection> listOfConnections = new ArrayList<>();
+
             if (optionalFSLocMetaData.isPresent()) {
                 final FSLocationValueMetaData fsLocMetaData = optionalFSLocMetaData.get();
                 final Set<DefaultFSLocationSpec> setOflocationSpecs = fsLocMetaData.getFSLocationSpecs();
-                List<FSConnection> listOfConnections = new ArrayList<>();
-
-                if (!setOflocationSpecs.isEmpty()) {
-                    for (final FSLocationSpec locationSpec : setOflocationSpecs) {
-                        listOfConnections.add(getRelevantFSConnection(specs, locationSpec).orElseThrow(
-                            () -> new InvalidSettingsException(String.format("Failed to initialize Connection for %s.",
-                                locationSpec.getFSCategory().getLabel()))));
-                    }
+                for (final FSLocationSpec locationSpec : setOflocationSpecs) {
+                    listOfConnections.add(getRelevantFSConnection(specs, locationSpec).orElseThrow(
+                        () -> new InvalidSettingsException(String.format("Failed to initialize Connection for %s.",
+                            locationSpec.getFSCategory().getLabel()))));
                 }
+
                 return listOfConnections;
             }
 
-            return Arrays.asList();
+            return listOfConnections;
         }
 
         private Optional<FSConnection> getRelevantFSConnection(final PortObjectSpec[] specs,
