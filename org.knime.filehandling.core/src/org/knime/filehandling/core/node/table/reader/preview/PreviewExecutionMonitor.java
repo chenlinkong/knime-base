@@ -74,18 +74,31 @@ import org.knime.filehandling.core.node.table.reader.preview.dialog.PreviewDataT
 public final class PreviewExecutionMonitor<I> extends ExecutionMonitor {
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(PreviewExecutionMonitor.class);
+
     private final CopyOnWriteArraySet<ChangeListener> m_listeners = new CopyOnWriteArraySet<>();
+
     private long m_specGuessingErrorRow;
+
     private String m_specGuessingErrorMsg;
+
     private long m_iteratorErrorRow;
+
     private String m_iteratorErrorMsg;
+
     private boolean m_isSizeAssessable;
-    private Optional<I> m_currentItem = Optional.empty();
+
+    private I m_currentItem = null;
+
     private int m_numItemsToRead;
+
     private AtomicInteger m_currentlyReadingItemIdx = new AtomicInteger(0);
+
     private AtomicLong m_numRowsIteratorTotalRead = new AtomicLong(0);
+
     private AtomicLong m_numRowsSpecGuessingTotalRead = new AtomicLong(0);
+
     private AtomicLong m_numRowsSpecGuessingCurrentRead = new AtomicLong(0);
+
     private boolean m_startNextReadProgress = true;
 
     /**
@@ -225,14 +238,13 @@ public final class PreviewExecutionMonitor<I> extends ExecutionMonitor {
      * @return the current item
      */
     public Optional<I> getCurrenttem() {
-        return m_currentItem;
+        return Optional.ofNullable(m_currentItem);
     }
 
     /**
      * @param currentItem the current item to set
      */
-    // TODO get rid for optional
-    public void setCurrentItem(final Optional<I> currentItem) {
+    public void setCurrentItem(final I currentItem) {
         m_currentItem = currentItem;
     }
 

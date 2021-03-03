@@ -52,7 +52,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.function.Function;
 
@@ -254,7 +253,7 @@ public final class TableSpecGuesser<I, T, V> {
         if (exec instanceof PreviewExecutionMonitor) {
             previewExec = (PreviewExecutionMonitor<I>)exec;
             previewExec.setSizeAssessable(estimatedSizeInBytes.isPresent());
-            previewExec.setCurrentItem(Optional.of(item));
+            previewExec.setCurrentItem(item);
             previewExec.incrementCurrentlyReadingItemIdx();
         } else {
             previewExec = null;
