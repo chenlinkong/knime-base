@@ -74,9 +74,9 @@ public interface IndividualTableReader<I, V> {
      * @param progress used for cancellation and progress reporting (provided the size of the read is known)
      * @throws Exception if something goes astray
      */
-    void fillOutput(Read<I, V> read, RowOutput output, ExecutionMonitor progress) throws Exception;
+    void fillOutput(Read<V> read, RowOutput output, ExecutionMonitor progress) throws Exception;
 
-    void fillRowCursor(Read<I, V> read, RowWriteCursor cursor, ExecutionMonitor progress) throws Exception;
+    void fillRowCursor(Read<V> read, RowWriteCursor cursor, ExecutionMonitor progress) throws Exception;
 
     /**
      * Converts the random accessible to a data row.

@@ -49,7 +49,6 @@
 package org.knime.base.node.preproc.manipulator.framework;
 
 import java.io.IOException;
-import java.util.Optional;
 import java.util.OptionalLong;
 
 import org.knime.base.node.preproc.manipulator.TableManipulatorConfig;
@@ -71,7 +70,7 @@ import com.google.common.collect.Tables;
  *
  * @author Tobias Koetter, KNIME GmbH, Konstanz, Germany
  */
-public class TableRead implements Read<Table, DataValue> {
+public class TableRead implements Read<DataValue> {
 
     static class RandomAccessibleDataRow extends AbstractRandomAccessible<DataValue> {
 
@@ -114,12 +113,10 @@ public class TableRead implements Read<Table, DataValue> {
         }
 
     }
-    private Table m_input;
     private TableReadConfig<TableManipulatorConfig> m_config;
     private CloseableRowIterator m_rowCursor;
 
     TableRead(final Table input, final TableReadConfig<TableManipulatorConfig> config) {
-        m_input = input;
         m_rowCursor = input.cursor();
         m_config = config;
     }
@@ -140,11 +137,6 @@ public class TableRead implements Read<Table, DataValue> {
     @Override
     public long getProgress() {
         return 0;
-    }
-
-    @Override
-    public Optional<Table> getItem() {
-        return Optional.of(m_input);
     }
 
     @Override

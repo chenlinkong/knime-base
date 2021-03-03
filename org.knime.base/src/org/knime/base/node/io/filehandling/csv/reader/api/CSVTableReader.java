@@ -102,7 +102,7 @@ public final class CSVTableReader implements TableReader<CSVTableReaderConfig, C
 
     @SuppressWarnings("resource") // closing the read is the responsibility of the caller
     @Override
-    public Read<Path, String> read(final Path path, final TableReadConfig<CSVTableReaderConfig> config)
+    public Read<String> read(final Path path, final TableReadConfig<CSVTableReaderConfig> config)
         throws IOException {
         return decorateForReading(new CsvRead(path, config), config);
     }
@@ -117,7 +117,7 @@ public final class CSVTableReader implements TableReader<CSVTableReaderConfig, C
      * @throws IOException if an I/O problem occurs
      */
     @SuppressWarnings("resource") // closing the read is the responsibility of the caller
-    public static Read<Path, String> read(final InputStream inputStream,
+    public static Read<String> read(final InputStream inputStream,
         final TableReadConfig<CSVTableReaderConfig> config) throws IOException {
         final CsvRead read = new CsvRead(inputStream, config);
         return decorateForReading(read, config);
@@ -128,7 +128,7 @@ public final class CSVTableReader implements TableReader<CSVTableReaderConfig, C
         final ExecutionMonitor exec) throws IOException {
         final TableSpecGuesser<Path, Class<?>, String> guesser = createGuesser(config);
         try (final CsvRead read = new CsvRead(path, config)) {
-            return guesser.guessSpec(read, config, exec);
+            return guesser.guessSpec(path, read, config, exec);
         }
     }
 
@@ -157,9 +157,9 @@ public final class CSVTableReader implements TableReader<CSVTableReaderConfig, C
      * @throws IOException if a stream can not be created from the provided file.
      */
     @SuppressWarnings("resource") // closing the read is the responsibility of the caller
-    private static Read<Path, String> decorateForReading(final CsvRead read,
+    private static Read<String> decorateForReading(final CsvRead read,
         final TableReadConfig<CSVTableReaderConfig> config) {
-        Read<Path, String> filtered = read;
+        Read<String> filtered = read;
         final boolean hasColumnHeader = config.useColumnHeaderIdx();
         final boolean skipRows = config.skipRows();
         if (skipRows) {

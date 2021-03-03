@@ -78,7 +78,7 @@ public interface GenericTableReader<I, C extends ReaderSpecificConfig<C>, T, V> 
      * @throws IOException if creating the read fails due to IO problems
      */
     // TODO add separate parameter for doing pushdown e.g. filtering
-    Read<I, V> read(I item, TableReadConfig<C> config) throws IOException;
+    Read<V> read(I item, TableReadConfig<C> config) throws IOException;
 
     /**
      * Reads the spec of the table stored at the input item. Note that the spec should not be filtered i.e. any

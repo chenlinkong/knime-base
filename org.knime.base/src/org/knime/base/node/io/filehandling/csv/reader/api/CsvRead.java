@@ -42,7 +42,7 @@
  *  may freely choose the license terms applicable to such Node, including
  *  when such Node is propagated with or for interoperation with KNIME.
  * ---------------------------------------------------------------------
- * 
+ *
  * History
  *   Mar 3, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
@@ -54,7 +54,6 @@ import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.OptionalLong;
 
 import org.knime.base.node.io.filehandling.csv.reader.OSIndependentNewLineReader;
@@ -75,7 +74,7 @@ import com.univocity.parsers.csv.CsvParserSettings;
  *
  * @author Temesgen H. Dadi, KNIME GmbH, Berlin, Germany
  */
-final class CsvRead implements Read<Path, String> {
+final class CsvRead implements Read<String> {
 
     /** */
     private static final NodeLogger LOGGER = NodeLogger.getLogger(CsvRead.class);
@@ -92,9 +91,6 @@ final class CsvRead implements Read<Path, String> {
     /** the {@link CsvParserSettings} */
     private final CsvParserSettings m_csvParserSettings;
 
-    /** the path of the underlying source */
-    private final Path m_path;
-
     /** The {@link CompressionAwareCountingInputStream} which creates the necessary streams */
     private final CompressionAwareCountingInputStream m_compressionAwareStream;
 
@@ -107,7 +103,7 @@ final class CsvRead implements Read<Path, String> {
      */
     @SuppressWarnings("resource") // The input stream is closed by the close method
     CsvRead(final Path path, final TableReadConfig<CSVTableReaderConfig> config) throws IOException {
-        this(new CompressionAwareCountingInputStream(path), Files.size(path), path, config);//NOSONAR
+        this(new CompressionAwareCountingInputStream(path), Files.size(path), config);//NOSONAR
     }
 
     /**
@@ -119,13 +115,12 @@ final class CsvRead implements Read<Path, String> {
      */
     @SuppressWarnings("resource") //streams will be closed in the close method
     CsvRead(final InputStream inputStream, final TableReadConfig<CSVTableReaderConfig> config) throws IOException {
-        this(new CompressionAwareCountingInputStream(inputStream), -1, null, config);
+        this(new CompressionAwareCountingInputStream(inputStream), -1, config);
     }
 
-    private CsvRead(final CompressionAwareCountingInputStream inputStream, final long size, final Path path,
+    private CsvRead(final CompressionAwareCountingInputStream inputStream, final long size,
         final TableReadConfig<CSVTableReaderConfig> config) throws IOException {
         m_size = size;
-        m_path = path;
         m_compressionAwareStream = inputStream;
 
         final CSVTableReaderConfig csvReaderConfig = config.getReaderSpecificConfig();
@@ -222,8 +217,4 @@ final class CsvRead implements Read<Path, String> {
         }
     }
 
-    @Override
-    public Optional<Path> getItem() {
-        return Optional.ofNullable(m_path);
-    }
 }

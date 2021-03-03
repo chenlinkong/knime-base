@@ -90,7 +90,7 @@ public class DefaultIndividualTableReaderTest {
     private RowKeyGenerator<String> m_rowKeyGenerator = null;
 
     @Mock
-    private Read<Path, String> m_read = null;
+    private Read<String> m_read = null;
 
     @Mock
     private RandomAccessible<String> m_randomAccessible = null;

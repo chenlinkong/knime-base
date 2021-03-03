@@ -49,7 +49,6 @@
 package org.knime.filehandling.core.node.table.reader.read;
 
 import java.io.IOException;
-import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.function.Supplier;
 
@@ -66,7 +65,7 @@ import org.knime.filehandling.core.node.table.reader.randomaccess.RandomAccessib
  * @noreference non-public API
  * @noimplement non-public API
  */
-public interface Read<I, V> extends AutoCloseable {
+public interface Read<V> extends AutoCloseable {
 
     /**
      * Returns the next row or null if the end is reached.</br>
@@ -95,11 +94,6 @@ public interface Read<I, V> extends AutoCloseable {
      * @return the current progress this {@code Read} already made
      */
     long getProgress();
-
-    /**
-     * @return the item to read from
-     */
-    Optional<I> getItem();
 
     @Override
     void close() throws IOException;

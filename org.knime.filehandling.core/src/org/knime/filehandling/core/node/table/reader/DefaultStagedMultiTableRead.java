@@ -178,8 +178,8 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
             m_rowKeyGenFactory.createContext(tableReadConfig));
     }
 
-    private Read<I, V> createRead(final I path, final TableReadConfig<C> config) throws IOException {
-        final Read<I, V> rawRead = m_reader.read(path, config);
+    private Read<V> createRead(final I path, final TableReadConfig<C> config) throws IOException {
+        final Read<V> rawRead = m_reader.read(path, config);
         if (config.decorateRead()) {
             return ReadUtils.decorateForReading(rawRead, config);
         }

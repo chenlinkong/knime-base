@@ -56,10 +56,9 @@ import org.knime.filehandling.core.node.table.reader.randomaccess.RandomAccessib
  * A decorator for a {@link Read} that limits it to the provided interval.
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
- * @param <I> the type of item the underlying Read reads from
  * @param <V> the type of value the underlying Read reads
  */
-public final class IntervalRead<I, V> extends AbstractReadDecorator<I, V> {
+public final class IntervalRead<V> extends AbstractReadDecorator<V> {
 
     private final long m_startIdx;
 
@@ -74,7 +73,7 @@ public final class IntervalRead<I, V> extends AbstractReadDecorator<I, V> {
      * @param startIdx the index to start reading at (zero based)
      * @param endIdx the index to stop reading at (zero based, exclusive)
      */
-    public IntervalRead(final Read<I, V> source, final long startIdx, final long endIdx) {
+    public IntervalRead(final Read<V> source, final long startIdx, final long endIdx) {
         super(source);
         m_startIdx = startIdx;
         m_endIdx = endIdx;

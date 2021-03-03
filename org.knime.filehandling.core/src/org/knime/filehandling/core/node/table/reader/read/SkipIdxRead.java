@@ -59,7 +59,7 @@ import org.knime.filehandling.core.node.table.reader.randomaccess.RandomAccessib
  * @param <I> the type of item the read reads from
  * @param <V> the type of values read reads
  */
-public final class SkipIdxRead<I, V> extends AbstractReadDecorator<I, V> {
+public final class SkipIdxRead<I, V> extends AbstractReadDecorator<V> {
 
     private final long m_idxToSkip;
 
@@ -71,7 +71,7 @@ public final class SkipIdxRead<I, V> extends AbstractReadDecorator<I, V> {
      * @param source the underlying {@link Read}
      * @param idxToSkip the index to skip (0 based indexing i.e. the first row has index 0)
      */
-    public SkipIdxRead(final Read<I, V> source, final long idxToSkip) {
+    public SkipIdxRead(final Read<V> source, final long idxToSkip) {
         super(source);
         m_idxToSkip = idxToSkip;
     }

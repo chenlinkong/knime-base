@@ -114,7 +114,7 @@ public class DefaultMultiTableReadTest {
     private TableReadConfig<?> m_config;
 
     @Mock
-    private CheckedExceptionFunction<String, Read<String, String>, IOException> m_readFn;
+    private CheckedExceptionFunction<String, Read<String>, IOException> m_readFn;
 
     @Mock
     private BiFunction<String, FileStoreFactory, IndividualTableReader<String, String>> m_individualTableReaderFactory;
@@ -139,15 +139,15 @@ public class DefaultMultiTableReadTest {
     private DefaultMultiTableRead<String, String, String> m_testInstance;
 
     private void stubReadFn() throws IOException {
-        Read<String, String> read1 = mockRead(TEST_TABLE[0], TEST_TABLE[1]);
+        Read<String> read1 = mockRead(TEST_TABLE[0], TEST_TABLE[1]);
         when(m_readFn.apply(PATH1)).thenReturn(read1);
-        Read<String, String> read2 = mockRead(TEST_TABLE[2], TEST_TABLE[3]);
+        Read<String> read2 = mockRead(TEST_TABLE[2], TEST_TABLE[3]);
         when(m_readFn.apply(PATH2)).thenReturn(read2);
     }
 
-    private static Read<String, String> mockRead(final String[]... rows) throws IOException {
+    private static Read<String> mockRead(final String[]... rows) throws IOException {
         @SuppressWarnings("unchecked")
-        final Read<String, String> read = mock(Read.class);
+        final Read<String> read = mock(Read.class);
         RandomAccessible<String> first = mockRandomAccessible();
         @SuppressWarnings("unchecked")
         RandomAccessible<String>[] restList = Arrays.stream(rows)//

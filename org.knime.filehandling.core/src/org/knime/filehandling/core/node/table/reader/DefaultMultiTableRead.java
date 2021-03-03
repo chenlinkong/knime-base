@@ -90,7 +90,7 @@ public final class DefaultMultiTableRead<I, T, V> implements MultiTableRead<T> {
 
     private final SourceGroup<I> m_sourceGroup;
 
-    private final CheckedExceptionFunction<I, ? extends Read<I, V>, IOException> m_readFn;
+    private final CheckedExceptionFunction<I, ? extends Read<V>, IOException> m_readFn;
 
     private final Supplier<BiFunction<I, FileStoreFactory, ? extends IndividualTableReader<I, V>>> m_individualTableReaderFactorySupplier;
 
@@ -106,7 +106,7 @@ public final class DefaultMultiTableRead<I, T, V> implements MultiTableRead<T> {
      * @param outputSpec {@link DataTableSpec} of the output table
      */
     public DefaultMultiTableRead(final SourceGroup<I> sourceGroup,
-        final CheckedExceptionFunction<I, ? extends Read<I, V>, IOException> readFn,
+        final CheckedExceptionFunction<I, ? extends Read<V>, IOException> readFn,
         final Supplier<BiFunction<I, FileStoreFactory, ? extends IndividualTableReader<I, V>>> individualTableReaderFactorySupplier,
         final TableReadConfig<?> tableReadConfig, final TableSpecConfig<T> tableSpecConfig,
         final DataTableSpec outputSpec) {
@@ -137,7 +137,7 @@ public final class DefaultMultiTableRead<I, T, V> implements MultiTableRead<T> {
             exec.checkCanceled();
             final ExecutionMonitor progress = exec.createSubProgress(1.0 / m_sourceGroup.size());
             final IndividualTableReader<I, V> reader = individualTableReaderFactory.apply(item, fsFactory);
-            try (final Read<I, V> read = m_readFn.apply(item)) {
+            try (final Read<V> read = m_readFn.apply(item)) {
                 reader.fillOutput(read, output, progress);
             } catch (TypeMapperException e) {
                 processAndThrowTypeMapperException(item, e);
@@ -157,7 +157,7 @@ public final class DefaultMultiTableRead<I, T, V> implements MultiTableRead<T> {
                 exec.checkCanceled();
                 final ExecutionMonitor progress = exec.createSubProgress(1.0 / m_sourceGroup.size());
                 final IndividualTableReader<I, V> reader = individualTableReaderFactory.apply(item, fsFactory);
-                try (final Read<I, V> read = m_readFn.apply(item)) {
+                try (final Read<V> read = m_readFn.apply(item)) {
                     reader.fillRowCursor(read, cursor, progress);
                 } catch (TypeMapperException e) {
                     processAndThrowTypeMapperException(item, e);

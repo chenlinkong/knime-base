@@ -231,6 +231,7 @@ public final class PreviewExecutionMonitor<I> extends ExecutionMonitor {
     /**
      * @param currentItem the current item to set
      */
+    // TODO get rid for optional
     public void setCurrentItem(final Optional<I> currentItem) {
         m_currentItem = currentItem;
     }

@@ -109,7 +109,7 @@ public final class DefaultIndividualTableReader<I, V> implements IndividualTable
     }
 
     @Override
-    public void fillOutput(final Read<I, V> read, final RowOutput output, final ExecutionMonitor progress)
+    public void fillOutput(final Read<V> read, final RowOutput output, final ExecutionMonitor progress)
         throws Exception {
         final OptionalLong maxProgress = read.getMaxProgress();
         if (maxProgress.isPresent()) {
@@ -119,7 +119,7 @@ public final class DefaultIndividualTableReader<I, V> implements IndividualTable
         }
     }
 
-    private void fillOutputWithoutProgress(final Read<I, V> read, final RowOutput output,
+    private void fillOutputWithoutProgress(final Read<V> read, final RowOutput output,
         final ExecutionMonitor progress) throws Exception {
         RandomAccessible<V> next;
         for (long i = 1; (next = read.next()) != null; i++) {
@@ -130,7 +130,7 @@ public final class DefaultIndividualTableReader<I, V> implements IndividualTable
         }
     }
 
-    private void fillOutputWithProgress(final Read<I, V> read, final RowOutput output,
+    private void fillOutputWithProgress(final Read<V> read, final RowOutput output,
         final ExecutionMonitor progress, final double size) throws Exception {
         final double doubleSize = size;
         RandomAccessible<V> next;
@@ -143,7 +143,7 @@ public final class DefaultIndividualTableReader<I, V> implements IndividualTable
     }
 
     @Override
-    public void fillRowCursor(final Read<I, V> read, final RowWriteCursor cursor, final ExecutionMonitor progress) throws Exception {
+    public void fillRowCursor(final Read<V> read, final RowWriteCursor cursor, final ExecutionMonitor progress) throws Exception {
         // TODO progress
         RandomAccessible<V> ra = read.next();
         while (ra != null) {
