@@ -57,7 +57,6 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -188,7 +187,6 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
      *
      * @see NodeModel#execute(BufferedDataTable[],ExecutionContext)
      */
-    @SuppressWarnings("unchecked")
     @Override
     protected BufferedDataTable[] execute(final BufferedDataTable[] data, final ExecutionContext exec)
         throws CanceledExecutionException {
@@ -197,8 +195,8 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
         // blow away result from last execute (should have been reset anyway)
         // first try to figure out what are the different class values
         // in the two respective columns
-        BufferedDataTable in = data[INPORT];
-        DataTableSpec inSpec = in.getDataTableSpec();
+        final BufferedDataTable in = data[INPORT];
+        final DataTableSpec inSpec = in.getDataTableSpec();
         final int index1 = inSpec.findColumnIndex(m_firstCompareColumn);
         final int index2 = inSpec.findColumnIndex(m_secondCompareColumn);
 
@@ -207,34 +205,28 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
         // cells in common (e.g. both have Iris-Setosa), they get the same
         // index in the array. thus, the high numbers should appear
         // in the diagonal
-        DataCell[] values = determineColValues(in, index1, index2, exec.createSubProgress(0.5));
-        List<DataCell> valuesList = Arrays.asList(values);
-        Set<DataCell> valuesInCol2 = new HashSet<DataCell>();
+        final DataCell[] values = determineColValues(in, index1, index2, exec.createSubProgress(0.5));
+        final List<DataCell> valuesList = Arrays.asList(values);
+        final Set<DataCell> valuesInCol2 = new HashSet<>();
 
         // the key store remembers the row key for later hiliting
-        List<RowKey>[][] keyStore = new List[values.length][values.length];
+        final List<RowKey>[][] keyStore = getKeyStore(values.length);
         // the scorerCount counts the confusions
-        int[][] scorerCount = new int[values.length][values.length];
+        final int[][] scorerCount = new int[values.length][values.length];
 
-        // init the matrix
-        for (int i = 0; i < keyStore.length; i++) {
-            for (int j = 0; j < keyStore[i].length; j++) {
-                keyStore[i][j] = new ArrayList<RowKey>();
-            }
-        }
-
-        long rowCnt = in.size();
+        final long rowCnt = in.size();
+        final ExecutionMonitor subExec = exec.createSubProgress(0.5);
         int numberOfRows = 0;
         int correctCount = 0;
         int falseCount = 0;
         int missingCount = 0;
-        ExecutionMonitor subExec = exec.createSubProgress(0.5);
 
-        try (CloseableRowIterator it = in.iterator()) {
+        try (final CloseableRowIterator it = in.iterator()) {
             while (it.hasNext()) {
-                final int curRow = ++numberOfRows;
+                ++numberOfRows;
+                final int curRow = numberOfRows;
 
-                DataRow row = it.next();
+                final DataRow row = it.next();
                 subExec.setProgress((1.0 + numberOfRows) / rowCnt,
                     () -> "Computing score, row " + curRow + " (\"" + row.getKey() + "\") of " + in.size());
                 try {
@@ -243,8 +235,8 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
                     reset();
                     throw cee;
                 }
-                DataCell cell1 = row.getCell(index1);
-                DataCell cell2 = row.getCell(index2);
+                final DataCell cell1 = row.getCell(index1);
+                final DataCell cell2 = row.getCell(index2);
                 valuesInCol2.add(cell2);
                 if (cell1.isMissing() || cell2.isMissing()) {
                     ++missingCount;
@@ -253,10 +245,10 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
                         continue;
                     }
                 }
-                boolean areEqual = cell1.equals(cell2);
+                final boolean areEqual = cell1.equals(cell2);
 
-                int i1 = valuesList.indexOf(cell1);
-                int i2 = areEqual ? i1 : valuesList.indexOf(cell2);
+                final int i1 = valuesList.indexOf(cell1);
+                final int i2 = areEqual ? i1 : valuesList.indexOf(cell2);
                 assert i1 >= 0 : "column spec lacks possible value " + cell1;
                 assert i2 >= 0 : "column spec lacks possible value " + cell2;
                 // i2 must be equal to i1 if cells are equal (implication)
@@ -272,25 +264,66 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
             }
         }
 
-        HashSet<String> valuesAsStringSet = new HashSet<String>();
-        HashSet<String> duplicateValuesAsString = new HashSet<String>();
-        for (DataCell c : values) {
-            valuesAsStringSet.add(c.toString());
-        }
-        for (DataCell c : values) {
-            String cAsString = c.toString();
-            if (!valuesAsStringSet.remove(cAsString)) {
-                duplicateValuesAsString.add(cAsString);
-            }
-        }
+        final HashSet<String> valuesAsStringSet = getValueAsStringSet(values);
+
+        final HashSet<String> duplicateValuesAsString = getDuplicateValuesAsStringSet(values, valuesAsStringSet);
 
         boolean hasPrintedWarningOnAmbiguousValues = false;
-        String[] targetValues = new String[values.length];
+
+        final String[] targetValues = getTargetValues(values, valuesInCol2, valuesAsStringSet, duplicateValuesAsString,
+            hasPrintedWarningOnAmbiguousValues);
+
+        if (missingCount > 0) {
+            addWarning("There were missing values in the reference or in the prediction class columns.");
+        }
+
+        final ScorerViewData viewData = new ScorerViewData(scorerCount, numberOfRows, falseCount, correctCount,
+            m_firstCompareColumn, m_secondCompareColumn, targetValues, keyStore);
+
+        final BufferedDataTable result = getResultTable(exec, scorerCount, targetValues);
+
+        // print info
+        final int missing = numberOfRows - correctCount - falseCount;
+        LOGGER.info("error=" + viewData.getError() + ", #correct=" + viewData.getCorrectCount() + ", #false="
+            + viewData.getFalseCount() + ", #rows=" + numberOfRows + ", #missing=" + missing);
+        // our view displays the table - we must keep a reference in the model.
+
+        // start creating accuracy statistics
+        final BufferedDataContainer accTable = exec.createDataContainer(new DataTableSpec(getOutputSpecs()));
+        createAccuracyStats(targetValues, viewData, accTable);
+
+        final RowKey rowKey = getUniqueRowKey(Arrays.asList(targetValues));
+
+        // append additional row for overall accuracy
+        accTable.addRowToTable(new DefaultRow(rowKey, DataType.getMissingCell(), DataType.getMissingCell(),
+            DataType.getMissingCell(), DataType.getMissingCell(), DataType.getMissingCell(), DataType.getMissingCell(),
+            DataType.getMissingCell(), DataType.getMissingCell(), DataType.getMissingCell(),
+            new DoubleCell(viewData.getAccuracy()), new DoubleCell(viewData.getCohenKappa())));
+        accTable.close();
+
+        m_viewData = viewData;
+        pushFlowVars(false);
+
+        return new BufferedDataTable[]{result, accTable.getTable()};
+    }
+
+    /**
+     * @param values
+     * @param valuesInCol2
+     * @param valuesAsStringSet
+     * @param duplicateValuesAsString
+     * @param hasPrintedWarningOnAmbiguousValues
+     * @return
+     */
+    private String[] getTargetValues(final DataCell[] values, final Set<DataCell> valuesInCol2,
+        final HashSet<String> valuesAsStringSet, final HashSet<String> duplicateValuesAsString,
+        boolean hasPrintedWarningOnAmbiguousValues) {
+        final String[] targetValues = new String[values.length];
         for (int i = 0; i < targetValues.length; i++) {
-            DataCell c = values[i];
+            final DataCell c = values[i];
             String s = c.toString();
             if (duplicateValuesAsString.contains(s)) {
-                boolean isInSecondColumn = valuesInCol2.contains(c);
+                final boolean isInSecondColumn = valuesInCol2.contains(c);
                 int uniquifier = 1;
                 if (isInSecondColumn) {
                     s = s.concat(" (" + m_secondCompareColumn + ")");
@@ -299,7 +332,8 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
                 }
                 String newName = s;
                 while (!valuesAsStringSet.add(newName)) {
-                    newName = s + "#" + (uniquifier++);
+                    newName = s + "#" + (uniquifier);
+                    uniquifier++;
                 }
                 targetValues[i] = newName;
                 if (!hasPrintedWarningOnAmbiguousValues) {
@@ -311,15 +345,18 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
                 int uniquifier = 1;
                 String newName = s;
                 while (!valuesAsStringSet.add(newName)) {
-                    newName = s + "#" + (uniquifier++);
+                    newName = s + "#" + (uniquifier);
+                    uniquifier++;
                 }
                 targetValues[i] = newName;
             }
         }
-        if (missingCount > 0) {
-            addWarning("There were missing values in the reference or in the prediction class columns.");
-        }
-        DataType[] colTypes = new DataType[targetValues.length];
+        return targetValues;
+    }
+
+    private static BufferedDataTable getResultTable(final ExecutionContext exec, final int[][] scorerCount,
+        final String[] targetValues) {
+        final DataType[] colTypes = new DataType[targetValues.length];
         Arrays.fill(colTypes, IntCell.TYPE);
         BufferedDataContainer container = exec.createDataContainer(new DataTableSpec(targetValues, colTypes));
         for (int i = 0; i < targetValues.length; i++) {
@@ -327,75 +364,121 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
             container.addRowToTable(new DefaultRow(targetValues[i], scorerCount[i]));
         }
         container.close();
+        return container.getTable();
+    }
 
-        ScorerViewData viewData = new ScorerViewData(scorerCount, numberOfRows, falseCount, correctCount,
-            m_firstCompareColumn, m_secondCompareColumn, targetValues, keyStore);
-
-        // print info
-        int missing = numberOfRows - correctCount - falseCount;
-        LOGGER.info("error=" + viewData.getError() + ", #correct=" + viewData.getCorrectCount() + ", #false="
-            + viewData.getFalseCount() + ", #rows=" + numberOfRows + ", #missing=" + missing);
-        // our view displays the table - we must keep a reference in the model.
-        BufferedDataTable result = container.getTable();
-
-        // start creating accuracy statistics
-        BufferedDataContainer accTable = exec.createDataContainer(new DataTableSpec(getOutputSpecs()));
-        for (int r = 0; r < targetValues.length; r++) {
-            int tp = viewData.getTP(r); // true positives
-            int fp = viewData.getFP(r); // false positives
-            int tn = viewData.getTN(r); // true negatives
-            int fn = viewData.getFN(r); // false negatives
-            final DataCell sensitivity; // TP / (TP + FN)
-            DoubleCell recall = null; // TP / (TP + FN)
-            if (tp + fn > 0) {
-                recall = new DoubleCell(1.0 * tp / (tp + fn));
-                sensitivity = new DoubleCell(1.0 * tp / (tp + fn));
-            } else {
-                sensitivity = DataType.getMissingCell();
-            }
-            DoubleCell prec = null; // TP / (TP + FP)
-            if (tp + fp > 0) {
-                prec = new DoubleCell(1.0 * tp / (tp + fp));
-            }
-            final DataCell specificity; // TN / (TN + FP)
-            if (tn + fp > 0) {
-                specificity = new DoubleCell(1.0 * tn / (tn + fp));
-            } else {
-                specificity = DataType.getMissingCell();
-            }
-            final DataCell fmeasure; // 2 * Prec. * Recall / (Prec. + Recall)
-            if (recall != null && prec != null) {
-                fmeasure = new DoubleCell(2.0 * prec.getDoubleValue() * recall.getDoubleValue()
-                    / (prec.getDoubleValue() + recall.getDoubleValue()));
-            } else {
-                fmeasure = DataType.getMissingCell();
-            }
-            // add complete row for class value to table
-            DataRow row = new DefaultRow(new RowKey(targetValues[r]),
-                new DataCell[]{new IntCell(tp), new IntCell(fp), new IntCell(tn), new IntCell(fn),
-                    recall == null ? DataType.getMissingCell() : recall,
-                    prec == null ? DataType.getMissingCell() : prec, sensitivity, specificity, fmeasure,
-                    DataType.getMissingCell(), DataType.getMissingCell()});
-            accTable.addRowToTable(row);
-        }
-        List<String> classIds = Arrays.asList(targetValues);
+    private static RowKey getUniqueRowKey(final List<String> classIds) {
         RowKey overallID = new RowKey("Overall");
         int uniquifier = 1;
         while (classIds.contains(overallID.getString())) {
-            overallID = new RowKey("Overall (#" + (uniquifier++) + ")");
+            overallID = new RowKey("Overall (#" + (uniquifier) + ")");
+            uniquifier++;
         }
-        // append additional row for overall accuracy
-        accTable.addRowToTable(new DefaultRow(overallID,
-            new DataCell[]{DataType.getMissingCell(), DataType.getMissingCell(), DataType.getMissingCell(),
-                DataType.getMissingCell(), DataType.getMissingCell(), DataType.getMissingCell(),
-                DataType.getMissingCell(), DataType.getMissingCell(), DataType.getMissingCell(),
-                new DoubleCell(viewData.getAccuracy()), new DoubleCell(viewData.getCohenKappa())}));
-        accTable.close();
 
-        m_viewData = viewData;
-        pushFlowVars(false);
+        return overallID;
+    }
 
-        return new BufferedDataTable[]{result, accTable.getTable()};
+    private static void createAccuracyStats(final String[] targetValues, final ScorerViewData viewData,
+        final BufferedDataContainer accTable) {
+        for (int r = 0; r < targetValues.length; r++) {
+            final int tp = viewData.getTP(r); // true positives
+            final int fp = viewData.getFP(r); // false positives
+            final int tn = viewData.getTN(r); // true negatives
+            final int fn = viewData.getFN(r); // false negatives
+
+            final DataCell sensitivity = getSensitivity(tp, fn);
+            final DoubleCell recall = getRecall(tp, fn);
+            final DoubleCell prec = getPrecision(tp, fp);
+            final DataCell specificity = getSpecificity(fp, tn);
+            final DataCell fmeasure = getFMeasure(recall, prec);
+
+            // add complete row for class value to table
+            accTable.addRowToTable(new DefaultRow(new RowKey(targetValues[r]), new IntCell(tp), new IntCell(fp),
+                new IntCell(tn), new IntCell(fn), recall == null ? DataType.getMissingCell() : recall,
+                prec == null ? DataType.getMissingCell() : prec, sensitivity, specificity, fmeasure,
+                DataType.getMissingCell(), DataType.getMissingCell()));
+        }
+    }
+
+    private static DataCell getSensitivity(final int tp, final int fn) {
+        DataCell sensitivity = null; // TP / (TP + FN)
+        if (tp + fn > 0) {
+            sensitivity = new DoubleCell(1.0 * tp / (tp + fn));
+        } else {
+            sensitivity = DataType.getMissingCell();
+        }
+        return sensitivity;
+    }
+
+    private static DoubleCell getRecall(final int tp, final int fn) {
+        DoubleCell recall = null; // TP / (TP + FN)
+        if (tp + fn > 0) {
+            recall = new DoubleCell(1.0 * tp / (tp + fn));
+        }
+        return recall;
+    }
+
+    private static DoubleCell getPrecision(final int tp, final int fp) {
+        DoubleCell prec = null; // TP / (TP + FP)
+        if (tp + fp > 0) {
+            prec = new DoubleCell(1.0 * tp / (tp + fp));
+        }
+        return prec;
+    }
+
+    private static DataCell getFMeasure(final DoubleCell recall, final DoubleCell prec) {
+        final DataCell fmeasure; // 2 * Prec. * Recall / (Prec. + Recall)
+        if (recall != null && prec != null) {
+            fmeasure = new DoubleCell(2.0 * prec.getDoubleValue() * recall.getDoubleValue()
+                / (prec.getDoubleValue() + recall.getDoubleValue()));
+        } else {
+            fmeasure = DataType.getMissingCell();
+        }
+        return fmeasure;
+    }
+
+    private static DataCell getSpecificity(final int fp, final int tn) {
+        final DataCell specificity; // TN / (TN + FP)
+        if (tn + fp > 0) {
+            specificity = new DoubleCell(1.0 * tn / (tn + fp));
+        } else {
+            specificity = DataType.getMissingCell();
+        }
+        return specificity;
+    }
+
+    private static HashSet<String> getValueAsStringSet(final DataCell[] values) {
+        final HashSet<String> hashSet = new HashSet<>();
+        for (DataCell c : values) {
+            hashSet.add(c.toString());
+        }
+        return hashSet;
+    }
+
+    private static HashSet<String> getDuplicateValuesAsStringSet(final DataCell[] values,
+        final HashSet<String> valueSet) {
+        final HashSet<String> hashSet = new HashSet<>();
+        for (DataCell c : values) {
+            String cAsString = c.toString();
+            if (!valueSet.remove(cAsString)) {
+                hashSet.add(cAsString);
+            }
+        }
+        return hashSet;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<RowKey>[][] getKeyStore(final int length) {
+        final List<RowKey>[][] keyStore = new ArrayList[length][length];
+
+        // init the matrix
+        for (int i = 0; i < keyStore.length; i++) {
+            for (int j = 0; j < keyStore[i].length; j++) {
+                keyStore[i][j] = new ArrayList<>();
+            }
+        }
+
+        return keyStore;
     }
 
     /**
@@ -416,23 +499,24 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
      * @param isConfigureOnly true enable overwriting check
      */
     private void pushFlowVars(final boolean isConfigureOnly) {
-        Map<String, FlowVariable> vars = getAvailableFlowVariables();
-        String prefix = m_flowVarPrefix != null ? m_flowVarPrefix : "";
-        String accuracyName = prefix + "Accuracy";
-        String errorName = prefix + "Error";
-        String correctName = prefix + "#Correct";
-        String falseName = prefix + "#False";
-        String kappaName = prefix + "Cohen's kappa";
+        final Map<String, FlowVariable> vars = getAvailableFlowVariables();
+        final String prefix = m_flowVarPrefix != null ? m_flowVarPrefix : "";
+        final String accuracyName = prefix + "Accuracy";
+        final String errorName = prefix + "Error";
+        final String correctName = prefix + "#Correct";
+        final String falseName = prefix + "#False";
+        final String kappaName = prefix + "Cohen's kappa";
+
         if (isConfigureOnly && (vars.containsKey(accuracyName) || vars.containsKey(errorName)
             || vars.containsKey(correctName) || vars.containsKey(falseName) || vars.containsKey(kappaName))) {
             addWarning("A flow variable was replaced!");
         }
 
-        double accu = isConfigureOnly ? 0.0 : m_viewData.getAccuracy();
-        double error = isConfigureOnly ? 0.0 : m_viewData.getError();
-        int correctCount = isConfigureOnly ? 0 : m_viewData.getCorrectCount();
-        int falseCount = isConfigureOnly ? 0 : m_viewData.getFalseCount();
-        double kappa = isConfigureOnly ? 0 : m_viewData.getCohenKappa();
+        final double accu = isConfigureOnly ? 0.0 : m_viewData.getAccuracy();
+        final double error = isConfigureOnly ? 0.0 : m_viewData.getError();
+        final int correctCount = isConfigureOnly ? 0 : m_viewData.getCorrectCount();
+        final int falseCount = isConfigureOnly ? 0 : m_viewData.getFalseCount();
+        final double kappa = isConfigureOnly ? 0 : m_viewData.getCohenKappa();
         pushFlowVariableDouble(accuracyName, accu);
         pushFlowVariableDouble(errorName, error);
         pushFlowVariableInt(correctName, correctCount);
@@ -598,40 +682,44 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
         LinkedHashSet<DataCell> values1;
         LinkedHashSet<DataCell> values2;
         if (v1 == null || v2 == null) { // values not available
-            values1 = new LinkedHashSet<DataCell>();
-            values2 = new LinkedHashSet<DataCell>();
+            values1 = new LinkedHashSet<>();
+            values2 = new LinkedHashSet<>();
             int rowNr = 0;
-            for (Iterator<DataRow> it = in.iterator(); it.hasNext(); rowNr++) {
-                DataRow row = it.next();
-                exec.checkCanceled(); // throws exception if user canceled.
-                exec.setProgress((1.0 + rowNr) / rowCnt,
-                    "Reading possible values, row " + rowNr + " (\"" + row.getKey() + "\")");
-                DataCell cell1 = row.getCell(index1);
-                DataCell cell2 = row.getCell(index2);
-                values1.add(cell1);
-                values2.add(cell2);
+
+            try (final CloseableRowIterator iterator = in.iterator()) {
+                while (iterator.hasNext()) {
+                    final DataRow row = iterator.next();
+                    exec.checkCanceled(); // throws exception if user canceled.
+                    exec.setProgress((1.0 + rowNr) / rowCnt,
+                        "Reading possible values, row " + rowNr + " (\"" + row.getKey() + "\")");
+                    DataCell cell1 = row.getCell(index1);
+                    DataCell cell2 = row.getCell(index2);
+                    values1.add(cell1);
+                    values2.add(cell2);
+                    rowNr++;
+                }
             }
         } else {
             // clone them, will change the set later on
-            values1 = new LinkedHashSet<DataCell>(v1);
-            values2 = new LinkedHashSet<DataCell>(v2);
+            values1 = new LinkedHashSet<>(v1);
+            values2 = new LinkedHashSet<>(v2);
         }
         // number of all possible values in both column (number of rows
         // and columns in the confusion matrix)
-        HashSet<DataCell> union = new HashSet<DataCell>(values1);
+        final HashSet<DataCell> union = new HashSet<>(values1);
         union.addAll(values2);
-        int unionCount = union.size();
+        final int unionCount = union.size();
 
         // intersection of values in columns
-        LinkedHashSet<DataCell> intersection = new LinkedHashSet<DataCell>(values1);
+        final LinkedHashSet<DataCell> intersection = new LinkedHashSet<>(values1);
         intersection.retainAll(values2);
 
         // an array of the intersection set
-        DataCell[] intSecAr = intersection.toArray(new DataCell[0]);
+        final DataCell[] intSecAr = intersection.toArray(new DataCell[0]);
 
         // order the elements (classes that occur in both columns first)
         // a good scoring is when the elements in the diagonal are high
-        DataCell[] order = new DataCell[unionCount];
+        final DataCell[] order = new DataCell[unionCount];
         System.arraycopy(intSecAr, 0, order, 0, intSecAr.length);
 
         // copy all values that are in values1 but not in values2
@@ -668,37 +756,10 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
             case Unsorted:
                 return;
             case Lexical:
-                if (StringCell.TYPE.isASuperTypeOf(type)) {
-                    Comparator<String> stringComparator;
-                    Collator instance = Collator.getInstance();
-                    //do not try to combine characters
-                    instance.setDecomposition(Collator.NO_DECOMPOSITION);
-                    //case and accents matter.
-                    instance.setStrength(Collator.IDENTICAL);
-                    @SuppressWarnings("unchecked")
-                    Comparator<String> collator = (Comparator<String>)(Comparator<?>)instance;
-                    stringComparator = collator;
-                    comparator = new StringValueComparator(stringComparator);
-                } else if (DoubleCell.TYPE.isASuperTypeOf(type)) {
-                    comparator = new DataValueComparator() {
-
-                        @Override
-                        protected int compareDataValues(final DataValue v1, final DataValue v2) {
-                            String s1 = v1.toString();
-                            String s2 = v2.toString();
-                            return s1.compareTo(s2);
-                        }
-                    };
-                } else {
-                    throw new IllegalStateException("Lexical sorting strategy is not supported.");
-                }
+                comparator = getLexigraphicComparator(type);
                 break;
             case Numeric:
-                if (DoubleCell.TYPE.isASuperTypeOf(type)) {
-                    comparator = type.getComparator();
-                } else {
-                    throw new IllegalStateException("Numerical sorting strategy is not supported.");
-                }
+                comparator = getNumericComparator(type);
                 break;
             default:
                 throw new IllegalStateException("Unrecognized sorting strategy: " + m_sortingStrategy);
@@ -709,12 +770,49 @@ public abstract class AbstractAccuracyScorerNodeModel extends NodeModel implemen
         }
     }
 
+    private static Comparator<DataCell> getNumericComparator(final DataType type) {
+        if (DoubleCell.TYPE.isASuperTypeOf(type)) {
+            return type.getComparator();
+        } else {
+            throw new IllegalStateException("Numerical sorting strategy is not supported.");
+        }
+    }
+
+    private static Comparator<DataCell> getLexigraphicComparator(final DataType type) {
+        final Comparator<DataCell> comparator;
+        if (StringCell.TYPE.isASuperTypeOf(type)) {
+            Comparator<String> stringComparator;
+            Collator instance = Collator.getInstance();
+            //do not try to combine characters
+            instance.setDecomposition(Collator.NO_DECOMPOSITION);
+            //case and accents matter.
+            instance.setStrength(Collator.IDENTICAL);
+            @SuppressWarnings("unchecked")
+            Comparator<String> collator = (Comparator<String>)(Comparator<?>)instance;
+            stringComparator = collator;
+            comparator = new StringValueComparator(stringComparator);
+        } else if (DoubleCell.TYPE.isASuperTypeOf(type)) {
+            comparator = new DataValueComparator() {
+
+                @Override
+                protected int compareDataValues(final DataValue v1, final DataValue v2) {
+                    String s1 = v1.toString();
+                    String s2 = v2.toString();
+                    return s1.compareTo(s2);
+                }
+            };
+        } else {
+            throw new IllegalStateException("Lexical sorting strategy is not supported.");
+        }
+        return comparator;
+    }
+
     /**
      * Reverses the order of cells.
      *
      * @param order Some cells.
      */
-    private void reverse(final DataCell[] order) {
+    private static void reverse(final DataCell[] order) {
         DataCell tmp;
         for (int i = 0; i < order.length / 2; ++i) {
             int hi = order.length - 1 - i;
