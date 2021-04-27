@@ -48,6 +48,7 @@
  */
 package org.knime.filehandling.core.defaultnodesettings.filtermode;
 
+import java.awt.CardLayout;
 import java.awt.Container;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
@@ -83,6 +84,10 @@ import org.knime.filehandling.core.defaultnodesettings.filtermode.SettingsModelF
  */
 public final class DialogComponentFilterMode extends DialogComponent {
 
+    private static final String SHOW_ADDITIONAL = "show_additional";
+
+    private static final String HIDE_ADDITIONAL = "hide_additional";
+
     /** Panel that is opened in a new dialog and contains filtering options */
     private final FilterOptionsPanel m_filterOptionsPanel = new FilterOptionsPanel();
 
@@ -99,6 +104,8 @@ public final class DialogComponentFilterMode extends DialogComponent {
     private final JPanel m_filterModePanel;
 
     private final JPanel m_filterConfigPanel;
+
+    private final CardLayout m_filterConfigCardLayout = new CardLayout();
 
     private final FilterMode[] m_filterModes;
 
@@ -159,6 +166,8 @@ public final class DialogComponentFilterMode extends DialogComponent {
     }
 
     private JPanel createFilterPanel() {
+        final JPanel cardPanel = new JPanel(m_filterConfigCardLayout);
+        cardPanel.add(new JPanel(), HIDE_ADDITIONAL);
         final JPanel panel = new JPanel(new GridBagLayout());
         final GridBagConstraints gbc = createAndInitGBC();
         panel.add(m_filterOptionsButton, gbc);
@@ -167,7 +176,8 @@ public final class DialogComponentFilterMode extends DialogComponent {
         gbc.weightx = 1;
         gbc.weighty = 1;
         panel.add(m_includeSubfoldersCheckBox, gbc);
-        return panel;
+        cardPanel.add(panel, SHOW_ADDITIONAL);
+        return cardPanel;
     }
 
     private static GridBagConstraints createAndInitGBC() {
@@ -253,7 +263,7 @@ public final class DialogComponentFilterMode extends DialogComponent {
     }
 
     /**
-     * Returns the panel that contains the the button to open the dialog with filter options and the check box that
+     * Returns the panel that contains the button to open the dialog with filter options and the check box that
      * enables/disables subfolders inclusion.
      *
      * @return the panel containing filter options button and include subfolders check box
@@ -301,8 +311,20 @@ public final class DialogComponentFilterMode extends DialogComponent {
 
     private void setFilterModeBasedVisibility(final FilterMode filterMode) {
         m_filterOptionsPanel.visibleComponents(filterMode);
-        m_filterConfigPanel.setVisible(filterMode == FilterMode.FILES_IN_FOLDERS
-            || filterMode == FilterMode.FILES_AND_FOLDERS || filterMode == FilterMode.FOLDERS);
+        final String card = determineCard(filterMode);
+        final CardLayout layout = (CardLayout)m_filterConfigPanel.getLayout();
+        layout.show(m_filterConfigPanel, card);
+    }
+
+    private static String determineCard(final FilterMode filterMode) {
+        String card = null;
+        if (filterMode == FilterMode.FILES_IN_FOLDERS
+                || filterMode == FilterMode.FILES_AND_FOLDERS || filterMode == FilterMode.FOLDERS) {
+            card = SHOW_ADDITIONAL;
+        } else {
+            card = HIDE_ADDITIONAL;
+        }
+        return card;
     }
 
     @Override
