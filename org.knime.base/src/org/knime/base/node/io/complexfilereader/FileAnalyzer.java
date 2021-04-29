@@ -49,6 +49,8 @@ package org.knime.base.node.io.complexfilereader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -67,12 +69,16 @@ import org.knime.core.data.def.IntCell;
 import org.knime.core.data.def.StringCell;
 import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionMonitor;
+import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeLogger;
 import org.knime.core.node.tableview.TableContentModel;
 import org.knime.core.util.tokenizer.Comment;
 import org.knime.core.util.tokenizer.Delimiter;
 import org.knime.core.util.tokenizer.Quote;
 import org.knime.core.util.tokenizer.Tokenizer;
+import org.knime.filehandling.core.defaultnodesettings.filechooser.reader.ReadPathAccessor;
+import org.knime.filehandling.core.defaultnodesettings.status.NodeModelStatusConsumer;
+import org.knime.filehandling.core.defaultnodesettings.status.StatusMessage.MessageType;
 
 /**
  * Provides functionality for analyzing an ASCII data file to create default settings. It tries to figure out what kind
@@ -104,6 +110,9 @@ public final class FileAnalyzer {
     /** The node logger for this class. */
     private static final NodeLogger LOGGER = NodeLogger.getLogger(FileAnalyzer.class);
 
+    //TODO
+    private static final NodeModelStatusConsumer m_statusConsumer = new NodeModelStatusConsumer(EnumSet.of(MessageType.ERROR, MessageType.WARNING));
+
     private FileAnalyzer() {
         // use static methods only
     }
@@ -125,161 +134,170 @@ public final class FileAnalyzer {
      */
     public static FileReaderNodeSettings analyze(final FileReaderNodeSettings userSettings, final ExecutionMonitor exec)
         throws IOException {
-        if (userSettings.getDataFileLocation() == null) {
-            throw new IllegalArgumentException("Must specify a valid file location for the file analyzer");
-        }
+        //        if (userSettings.getDataFileLocation() == null) {
+        //            throw new IllegalArgumentException("Must specify a valid file location for the file analyzer");
+        //        }
 
-        ExecutionMonitor execMon = exec;
-        if (execMon == null) {
-            // we create a default exec monitor. Doesn't hurt, because that
-            // will never be canceled.
-            execMon = new FileReaderExecutionMonitor();
-        }
+        try (final ReadPathAccessor readAccessor = userSettings.getInputFileChooserModel().createReadPathAccessor()) {
+        	//TODO
+            Path path = null;
+            try {
+                path = readAccessor.getRootPath(m_statusConsumer);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+            } catch (InvalidSettingsException e) {
+                // TODO Auto-generated catch block
+            }
 
-        // create the new and empty settings
-        FileReaderNodeSettings result = new FileReaderNodeSettings();
+            ExecutionMonitor execMon = exec;
+            if (execMon == null) {
+                // we create a default exec monitor. Doesn't hurt, because that
+                // will never be canceled.
+                execMon = new FileReaderExecutionMonitor();
+            }
 
-        execMon.setProgress(0.0);
-        try {
-            result.setDataFileLocationAndUpdateTableName(userSettings.getDataFileLocation());
-            result.setDecimalSeparator(userSettings.getDecimalSeparator());
-            result.setThousandsSeparator(userSettings.getThousandsSeparator());
-            result.setDecimalSeparatorUserSet(userSettings.decimalSeparatorUserSet());
-            result.setUniquifyRowIDs(userSettings.uniquifyRowIDs());
-            result.setMaximumNumberOfRowsToRead(userSettings.getMaximumNumberOfRowsToRead());
-            result.setSkipFirstLines(userSettings.getSkipFirstLines());
-            result.allowLFinQuotes(userSettings.allowLFinQuotes());
-            result.setCharsetName(userSettings.getCharsetName());
-            result.setAnalyzeUsedAllRows(true);
-            result.setMissValuePatternStrCols(userSettings.getMissValuePatternStrCols());
-            result.setConnectTimeout(userSettings.getConnectTimeout());
+            // create the new and empty settings
+            FileReaderNodeSettings result = new FileReaderNodeSettings(userSettings);
 
-            //if the user didn't provide the charset, identify it by looking at the first bytes of the stream
-            if (!userSettings.isCharsetUserSet()) {
-                result.setCharsetName(guessCharSet(userSettings));
-                result.setCharsetUserSet(false);
-            } else {
+            execMon.setProgress(0.0);
+            try {
+                result.setDecimalSeparator(userSettings.getDecimalSeparator());
+                result.setThousandsSeparator(userSettings.getThousandsSeparator());
+                result.setDecimalSeparatorUserSet(userSettings.decimalSeparatorUserSet());
+                result.setUniquifyRowIDs(userSettings.uniquifyRowIDs());
+                result.setMaximumNumberOfRowsToRead(userSettings.getMaximumNumberOfRowsToRead());
+                result.setSkipFirstLines(userSettings.getSkipFirstLines());
+                result.allowLFinQuotes(userSettings.allowLFinQuotes());
                 result.setCharsetName(userSettings.getCharsetName());
-                result.setCharsetUserSet(true);
-            }
+                result.setAnalyzeUsedAllRows(true);
+                result.setMissValuePatternStrCols(userSettings.getMissValuePatternStrCols());
+                result.setConnectTimeout(userSettings.getConnectTimeout());
 
-            ExecutionMonitor subExec = execMon.createSubProgress(COMMENT_SUB);
-            if (!userSettings.isCommentUserSet()) {
-                // only guess comment patterns if user didn't provide any
-                addComments(result, subExec);
-                result.setCommentUserSet(false);
-            } else {
-                // take over user settings.
-                for (Comment comment : userSettings.getAllComments()) {
-                    result.addBlockCommentPattern(comment.getBegin(), comment.getEnd(), comment.returnAsSeparateToken(),
-                        comment.includeInToken());
-                }
-                result.setCommentUserSet(true);
-            }
-            subExec.setProgress(1.0);
-            checkInterrupt(execMon);
-
-            subExec = execMon.createSubProgress(QUOTES_SUB);
-            if (!userSettings.isQuoteUserSet()) {
-                // only guess quotes if user didn't specify any
-                addQuotes(result, subExec);
-                result.setQuoteUserSet(false);
-            } else {
-                // take over user settings.
-                for (Quote quote : userSettings.getAllQuotes()) {
-                    if (quote.hasEscapeChar()) {
-                        result.addQuotePattern(quote.getLeft(), quote.getRight(), quote.getEscape());
-                    } else {
-                        result.addQuotePattern(quote.getLeft(), quote.getRight());
-                    }
-                }
-                result.setQuoteUserSet(true);
-            }
-            subExec.setProgress(1.0);
-            checkInterrupt(execMon);
-
-            // if user provided whitespace characters, we need to add them.
-            if (userSettings.isWhiteSpaceUserSet()) {
-                for (String ws : userSettings.getAllWhiteSpaces()) {
-                    result.addWhiteSpaceCharacter(ws);
-                }
-                result.setWhiteSpaceUserSet(true);
-            } else {
-                result.addWhiteSpaceCharacter(" ");
-                result.addWhiteSpaceCharacter("\t");
-                result.setWhiteSpaceUserSet(false);
-            }
-            subExec.setProgress(1.0);
-            checkInterrupt(execMon);
-
-            // for now we just take over this flag:
-            result.setSupportShortLines(userSettings.getSupportShortLines());
-
-            // sets delimiter and column numbers (as many columns as it gets
-            // with the delimiters - regardless of any row headers);
-            // honors user settings
-            subExec = execMon.createSubProgress(DELIMS_SUB);
-
-            setDelimitersAndColNum(userSettings, result, subExec);
-
-            assert result.getNumberOfColumns() > 0;
-            subExec.setProgress(1.0);
-            checkInterrupt(execMon);
-
-            // the number of column set as of now does not take into account the
-            // skipped columns.
-            subExec = execMon.createSubProgress(ROWHDR_SUB);
-            if (userSettings.isFileHasRowHeadersUserSet()) {
-                result.setFileHasRowHeaders(userSettings.getFileHasRowHeaders());
-                result.setFileHasRowHeadersUserSet(true);
-            } else {
-                boolean hasRowHeaders;
-                if (result.getNumberOfColumns() > 1) {
-                    // if we have at least 2 cols, one of them could be headers
-                    hasRowHeaders = checkRowHeader(result, subExec);
+                //if the user didn't provide the charset, identify it by looking at the first bytes of the stream
+                if (!userSettings.isCharsetUserSet()) {
+                    result.setCharsetName(guessCharSet(userSettings, path));
+                    result.setCharsetUserSet(false);
                 } else {
-                    hasRowHeaders = false;
+                    result.setCharsetName(userSettings.getCharsetName());
+                    result.setCharsetUserSet(true);
                 }
-                result.setFileHasRowHeaders(hasRowHeaders);
-                result.setFileHasRowHeadersUserSet(false);
+
+                ExecutionMonitor subExec = execMon.createSubProgress(COMMENT_SUB);
+                if (!userSettings.isCommentUserSet()) {
+                    // only guess comment patterns if user didn't provide any
+                    addComments(result, subExec, path);
+                    result.setCommentUserSet(false);
+                } else {
+                    // take over user settings.
+                    for (Comment comment : userSettings.getAllComments()) {
+                        result.addBlockCommentPattern(comment.getBegin(), comment.getEnd(),
+                            comment.returnAsSeparateToken(), comment.includeInToken());
+                    }
+                    result.setCommentUserSet(true);
+                }
+                subExec.setProgress(1.0);
+                checkInterrupt(execMon);
+
+                subExec = execMon.createSubProgress(QUOTES_SUB);
+                if (!userSettings.isQuoteUserSet()) {
+                    // only guess quotes if user didn't specify any
+                    addQuotes(result, subExec, path);
+                    result.setQuoteUserSet(false);
+                } else {
+                    // take over user settings.
+                    for (Quote quote : userSettings.getAllQuotes()) {
+                        if (quote.hasEscapeChar()) {
+                            result.addQuotePattern(quote.getLeft(), quote.getRight(), quote.getEscape());
+                        } else {
+                            result.addQuotePattern(quote.getLeft(), quote.getRight());
+                        }
+                    }
+                    result.setQuoteUserSet(true);
+                }
+                subExec.setProgress(1.0);
+                checkInterrupt(execMon);
+
+                // if user provided whitespace characters, we need to add them.
+                if (userSettings.isWhiteSpaceUserSet()) {
+                    for (String ws : userSettings.getAllWhiteSpaces()) {
+                        result.addWhiteSpaceCharacter(ws);
+                    }
+                    result.setWhiteSpaceUserSet(true);
+                } else {
+                    result.addWhiteSpaceCharacter(" ");
+                    result.addWhiteSpaceCharacter("\t");
+                    result.setWhiteSpaceUserSet(false);
+                }
+                subExec.setProgress(1.0);
+                checkInterrupt(execMon);
+
+                // for now we just take over this flag:
+                result.setSupportShortLines(userSettings.getSupportShortLines());
+
+                // sets delimiter and column numbers (as many columns as it gets
+                // with the delimiters - regardless of any row headers);
+                // honors user settings
+                subExec = execMon.createSubProgress(DELIMS_SUB);
+
+                setDelimitersAndColNum(userSettings, result, subExec, path);
+
+                assert result.getNumberOfColumns() > 0;
+                subExec.setProgress(1.0);
+                checkInterrupt(execMon);
+
+                // the number of column set as of now does not take into account the
+                // skipped columns.
+                subExec = execMon.createSubProgress(ROWHDR_SUB);
+                if (userSettings.isFileHasRowHeadersUserSet()) {
+                    result.setFileHasRowHeaders(userSettings.getFileHasRowHeaders());
+                    result.setFileHasRowHeadersUserSet(true);
+                } else {
+                    boolean hasRowHeaders;
+                    if (result.getNumberOfColumns() > 1) {
+                        // if we have at least 2 cols, one of them could be headers
+                        hasRowHeaders = checkRowHeader(result, subExec, path);
+                    } else {
+                        hasRowHeaders = false;
+                    }
+                    result.setFileHasRowHeaders(hasRowHeaders);
+                    result.setFileHasRowHeadersUserSet(false);
+                }
+                subExec.setProgress(1.0);
+                checkInterrupt(execMon);
+
+                // we must correct the column number we've guessed
+                if (result.getFileHasRowHeaders()) {
+                    result.setNumberOfColumns(result.getNumberOfColumns() - 1);
+                }
+
+                // guesses (or copies) column types and names.
+                subExec = execMon.createSubProgress(TYPES_SUB + COLHDR_SUB);
+                Vector<ColProperty> columnProps = createColumnProperties(userSettings, result, subExec, path);
+                result.setColumnProperties(columnProps);
+                subExec.setProgress(1.0);
+
+                // set a default row header prefix
+                if (userSettings.getRowHeaderPrefix() != null) {
+                    result.setRowHeaderPrefix(userSettings.getRowHeaderPrefix());
+                } else {
+                    result.setRowHeaderPrefix("Row");
+                }
+
+                if (userSettings.isIgnoreEmptyLinesUserSet()) {
+                    result.setIgnoreEmptyLines(userSettings.getIgnoreEmtpyLines());
+                    result.setIgnoreEmptyLinesUserSet(true);
+                } else {
+                    result.setIgnoreEmptyLines(true);
+                    result.setIgnoreEmptyLinesUserSet(false);
+                }
+
+                execMon.setProgress(1.0);
+
+            } catch (InterruptedExecutionException iee) {
+                return null;
             }
-            subExec.setProgress(1.0);
-            checkInterrupt(execMon);
-
-            // we must correct the column number we've guessed
-            if (result.getFileHasRowHeaders()) {
-                result.setNumberOfColumns(result.getNumberOfColumns() - 1);
-            }
-
-            // guesses (or copies) column types and names.
-            subExec = execMon.createSubProgress(TYPES_SUB + COLHDR_SUB);
-            Vector<ColProperty> columnProps = createColumnProperties(userSettings, result, subExec);
-            result.setColumnProperties(columnProps);
-            subExec.setProgress(1.0);
-
-            // set a default row header prefix
-            if (userSettings.getRowHeaderPrefix() != null) {
-                result.setRowHeaderPrefix(userSettings.getRowHeaderPrefix());
-            } else {
-                result.setRowHeaderPrefix("Row");
-            }
-
-            if (userSettings.isIgnoreEmptyLinesUserSet()) {
-                result.setIgnoreEmptyLines(userSettings.getIgnoreEmtpyLines());
-                result.setIgnoreEmptyLinesUserSet(true);
-            } else {
-                result.setIgnoreEmptyLines(true);
-                result.setIgnoreEmptyLinesUserSet(false);
-            }
-
-            execMon.setProgress(1.0);
-
-        } catch (InterruptedExecutionException iee) {
-            return null;
+            return result;
         }
-
-        return result;
-
     }
 
     /**
@@ -351,12 +369,12 @@ public final class FileAnalyzer {
      * @throws IOException if an I/O error occurs
      */
     private static Vector<ColProperty> createColumnProperties(final FileReaderNodeSettings userSettings,
-        final FileReaderNodeSettings result, final ExecutionMonitor exec)
-            throws IOException, InterruptedExecutionException {
+        final FileReaderNodeSettings result, final ExecutionMonitor exec, final Path path)
+        throws IOException, InterruptedExecutionException {
 
         // first detect the type of each column
         ExecutionMonitor subExec = exec.createSubProgress(TYPES_SUB);
-        ColProperty[] colProps = createColumnTypes(userSettings, result, subExec);
+        ColProperty[] colProps = createColumnTypes(userSettings, result, subExec, path);
         // extract the column types and column missing values from the result
         // of the above method call
         DataType[] columnTypes = new DataType[colProps.length];
@@ -378,7 +396,7 @@ public final class FileAnalyzer {
         String scndLineRowHeader = null;
         String[] columnHeaders = new String[result.getNumberOfColumns()];
 
-        BufferedReader reader = result.createNewInputReader();
+        BufferedReader reader = result.createNewInputReader(path);
         Tokenizer tokenizer = new Tokenizer(reader);
         tokenizer.setSettings(result);
 
@@ -527,10 +545,10 @@ public final class FileAnalyzer {
      * @throws IOException if an I/O error occurs
      * @throws InterruptedExecutionException if analysis should be interrupted immediately
      */
-    private static boolean checkRowHeader(final FileReaderNodeSettings settings, final ExecutionMonitor exec)
+    private static boolean checkRowHeader(final FileReaderNodeSettings settings, final ExecutionMonitor exec, final Path path)
         throws IOException, InterruptedExecutionException {
 
-        BufferedFileReader reader = settings.createNewInputReader();
+        BufferedFileReader reader = settings.createNewInputReader(path);
         final double fileSize = reader.getFileSize();
         long linesRead = 0;
 
@@ -733,9 +751,9 @@ public final class FileAnalyzer {
     }
 
     private static ColProperty[] createColumnTypes(final FileReaderNodeSettings userSettings,
-        final FileReaderNodeSettings result, final ExecutionMonitor exec)
-            throws IOException, InterruptedExecutionException {
-        BufferedFileReader reader = result.createNewInputReader();
+        final FileReaderNodeSettings result, final ExecutionMonitor exec, final Path path)
+        throws IOException, InterruptedExecutionException {
+        BufferedFileReader reader = result.createNewInputReader(path);
         long fileSize = reader.getFileSize();
 
         exec.setProgress("Guessing column types");
@@ -960,14 +978,14 @@ public final class FileAnalyzer {
      * @param exec to check for cancellations and to report progress
      * @throws IOException if an I/O error occurs
      */
-    private static void addComments(final FileReaderNodeSettings settings, final ExecutionMonitor exec)
+    private static void addComments(final FileReaderNodeSettings settings, final ExecutionMonitor exec, final Path path)
         throws IOException, InterruptedExecutionException {
 
         assert settings != null;
-        assert settings.getDataFileLocation() != null;
+//        assert settings.getDataFileLocation() != null;
         assert settings.getAllComments().size() == 0;
 
-        BufferedReader reader = settings.createNewInputReader();
+        BufferedReader reader = settings.createNewInputReader(path);
 
         exec.setProgress("Guessing comment pattern");
 
@@ -988,7 +1006,6 @@ public final class FileAnalyzer {
                     continue;
                 }
                 linesRead++;
-
 
                 if (line.charAt(0) == '#') {
                     settings.addSingleLineCommentPattern("#", false, false);
@@ -1033,14 +1050,14 @@ public final class FileAnalyzer {
      * @throws IOException if an I/O error occurs
      * @throws InterruptedExecutionException if analysis was interrupted
      */
-    private static void addQuotes(final FileReaderNodeSettings settings, final ExecutionMonitor exec)
+    private static void addQuotes(final FileReaderNodeSettings settings, final ExecutionMonitor exec, final Path path)
         throws IOException, InterruptedExecutionException {
         assert settings != null;
-        assert settings.getAllQuotes().size() == 0;
-        assert settings.getDataFileLocation() != null;
-        assert settings.getAllDelimiters().size() == 0;
+//        assert settings.getAllQuotes().size() == 0;
+//        assert settings.getDataFileLocation() != null;
+//        assert settings.getAllDelimiters().size() == 0;
 
-        BufferedFileReader reader = settings.createNewInputReader();
+        BufferedFileReader reader = settings.createNewInputReader(path);
         Tokenizer tokenizer = new Tokenizer(reader);
         double fileSize = reader.getFileSize();
         exec.setProgress("Guessing quotes");
@@ -1173,12 +1190,12 @@ public final class FileAnalyzer {
      * delimiters will be set. A row delimiter ('\n' and '\r') is always set.
      */
     private static void setDelimitersAndColNum(final FileReaderNodeSettings userSettings,
-        final FileReaderNodeSettings result, final ExecutionMonitor exec)
-            throws IOException, InterruptedExecutionException {
+        final FileReaderNodeSettings result, final ExecutionMonitor exec, final Path path)
+        throws IOException, InterruptedExecutionException {
 
         assert result != null;
         assert userSettings != null;
-        assert result.getDataFileLocation() != null;
+//        assert result.getDataFileLocation() != null;
 
         if (!userSettings.isDelimiterUserSet()) {
 
@@ -1197,7 +1214,7 @@ public final class FileAnalyzer {
                     result.addRowDelimiter("\r", true);
                     result.addDelimiterPattern(";", false, false, false);
 
-                    if (testDelimiterSettingsSetColNum(result, subExec)) {
+                    if (testDelimiterSettingsSetColNum(result, subExec, path)) {
                         return;
                     }
                 } catch (IllegalArgumentException iae) {
@@ -1217,7 +1234,7 @@ public final class FileAnalyzer {
                     result.addRowDelimiter("\r", true);
                     result.addDelimiterPattern(",", false, false, false);
 
-                    if (testDelimiterSettingsSetColNum(result, subExec)) {
+                    if (testDelimiterSettingsSetColNum(result, subExec, path)) {
                         return;
                     }
                 } catch (IllegalArgumentException iae) {
@@ -1238,7 +1255,7 @@ public final class FileAnalyzer {
 
                     result.addDelimiterPattern("\t", false, false, false);
 
-                    if (testDelimiterSettingsSetColNum(result, subExec)) {
+                    if (testDelimiterSettingsSetColNum(result, subExec, path)) {
                         return;
                     }
                 } catch (IllegalArgumentException iae) {
@@ -1261,7 +1278,7 @@ public final class FileAnalyzer {
                     result.addDelimiterPattern(" ", true, false, false);
                     result.setIgnoreEmptyTokensAtEndOfRow(true);
 
-                    if (testDelimiterSettingsSetColNum(result, subExec)) {
+                    if (testDelimiterSettingsSetColNum(result, subExec, path)) {
                         return;
                     }
                 } catch (IllegalArgumentException iae) {
@@ -1281,7 +1298,7 @@ public final class FileAnalyzer {
                     result.addRowDelimiter("\r", true);
                     result.addDelimiterPattern(" ", true, false, false);
 
-                    if (testDelimiterSettingsSetColNum(result, subExec)) {
+                    if (testDelimiterSettingsSetColNum(result, subExec, path)) {
                         return;
                     }
                 } catch (IllegalArgumentException iae) {
@@ -1316,7 +1333,7 @@ public final class FileAnalyzer {
             }
             // set the number of cols that we read in with user presets.
             // take the maximum if rows have different num of cols.
-            result.setNumberOfColumns(getMaximumNumberOfColumns(result, exec));
+            result.setNumberOfColumns(getMaximumNumberOfColumns(result, exec, path));
         }
 
         return;
@@ -1348,9 +1365,9 @@ public final class FileAnalyzer {
      * fill the row, in case a later row has more (non-empty) tokens.
      */
     private static boolean testDelimiterSettingsSetColNum(final FileReaderNodeSettings settings,
-        final ExecutionMonitor exec) throws IOException, InterruptedExecutionException {
+        final ExecutionMonitor exec, final Path path) throws IOException, InterruptedExecutionException {
 
-        BufferedFileReader reader = settings.createNewInputReader();
+        BufferedFileReader reader = settings.createNewInputReader(path);
         Tokenizer tokenizer = new Tokenizer(reader);
         tokenizer.setSettings(settings);
 
@@ -1494,10 +1511,10 @@ public final class FileAnalyzer {
 
     }
 
-    private static int getMaximumNumberOfColumns(final FileReaderNodeSettings settings, final ExecutionMonitor exec)
+    private static int getMaximumNumberOfColumns(final FileReaderNodeSettings settings, final ExecutionMonitor exec,final Path path)
         throws IOException, InterruptedExecutionException {
 
-        BufferedFileReader reader = settings.createNewInputReader();
+        BufferedFileReader reader = settings.createNewInputReader(path);
         Tokenizer tokenizer = new Tokenizer(reader);
         tokenizer.setSettings(settings);
         double fileSize = reader.getFileSize();
@@ -1578,9 +1595,9 @@ public final class FileAnalyzer {
         return numOfCols;
     }
 
-    private static String guessCharSet(final FileReaderNodeSettings settings) {
+    private static String guessCharSet(final FileReaderNodeSettings settings, final Path path) {
         String charset = settings.getCharsetName();
-        try (BufferedFileReader reader = settings.createNewInputReader()) {
+        try (BufferedFileReader reader = settings.createNewInputReader(path)) {
             int c = reader.read();
             if (c == 239) {
                 //EF
@@ -1660,7 +1677,7 @@ public final class FileAnalyzer {
          * @param headerToTest the next header in the file to test.
          * @return true, if this header fits in the sequence of header - with its prefix and its running index.
          */
-            boolean testNextHeader(final String headerToTest) {
+        boolean testNextHeader(final String headerToTest) {
             if (headerToTest == null || headerToTest.isEmpty()) {
                 return false;
             }
