@@ -46,10 +46,10 @@ package org.knime.base.node.io.complexfilereader;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.Vector;
 
 import org.knime.core.data.DataRow;
@@ -59,11 +59,11 @@ import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionContext;
 import org.knime.core.node.ExecutionMonitor;
 import org.knime.core.node.InvalidSettingsException;
-import org.knime.core.node.NodeCreationContext;
 import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeModel;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.streamable.BufferedDataTableRowOutput;
 import org.knime.core.node.streamable.PartitionInfo;
@@ -73,23 +73,27 @@ import org.knime.core.node.streamable.RowOutput;
 import org.knime.core.node.streamable.StreamableOperator;
 import org.knime.core.node.util.StringHistory;
 import org.knime.core.util.DuplicateKeyException;
-import org.knime.core.util.FileUtil;
 import org.knime.core.util.tokenizer.SettingsStatus;
+import org.knime.filehandling.core.defaultnodesettings.filechooser.reader.ReadPathAccessor;
+import org.knime.filehandling.core.defaultnodesettings.status.NodeModelStatusConsumer;
+import org.knime.filehandling.core.defaultnodesettings.status.StatusMessage.MessageType;
 
 /**
  * @author Peter Ohl, University of Konstanz
  */
 public class FileReaderNodeModel extends NodeModel {
     /**
-     * The id this objects uses to store its file history in the
-     * <code>StringHistory</code> object. Don't reuse this id unless you want to
-     * share the history list.
+     * The id this objects uses to store its file history in the <code>StringHistory</code> object. Don't reuse this id
+     * unless you want to share the history list.
      */
     public static final String FILEREADER_HISTORY_ID = "ASCIIfile";
 
     /** The node logger fot this class. */
-    private static final NodeLogger LOGGER = NodeLogger
-            .getLogger(FileReaderNodeModel.class);
+    private static final NodeLogger LOGGER = NodeLogger.getLogger(FileReaderNodeModel.class);
+
+    private final PortsConfiguration m_portsConfig;
+
+    private NodeModelStatusConsumer m_statusConsumer;
 
     /*
      * The settings structure used to create a DataTable from during execute.
@@ -99,167 +103,70 @@ public class FileReaderNodeModel extends NodeModel {
     /**
      * Creates a new model that creates and holds a Filetable.
      */
-    public FileReaderNodeModel() {
-        super(0, 1); // we need no inputs and one output, please.
-        m_frSettings = null;
+    public FileReaderNodeModel(final PortsConfiguration portsConfig) {
+        super(portsConfig.getInputPorts(), portsConfig.getOutputPorts());
+        m_portsConfig = portsConfig;
+        m_frSettings = new FileReaderNodeSettings(m_portsConfig);
+        m_statusConsumer = new NodeModelStatusConsumer(EnumSet.of(MessageType.WARNING));
     }
 
-    /**
-     * Creates a new model and either read its settings from the specified file,
-     * if the filename ends with ".xml", or set the specified file name as
-     * default data file name for the configuration dialog. Settings in the
-     * model resulting from this constructor must not necessarily be correct or
-     * valid.
-     *
-     * @param filename valid URL to a data file or a XML configuration file. If
-     *            the filename ends with ".xml" it's considered a xml file spec.
-     */
-    public FileReaderNodeModel(final String filename) {
-        this();
-        if (filename != null) {
-            if ((filename.lastIndexOf('.') >= 0)
-                    && (filename.substring(filename.lastIndexOf('.'))
-                            .equals(".xml"))) {
-                // Its a XML file - try reading it in.
-                try {
-                    m_frSettings =
-                            FileReaderNodeSettings
-                                    .readSettingsFromXMLFile(filename);
-                } catch (IllegalStateException ise) {
-                    LOGGER.error("FileReader: " + ise.getMessage());
-                    LOGGER.error("FileReader: XML file not read.");
-                }
-            } else {
-                // doesn't have the XML extension - consider it a data file
-                m_frSettings = new FileReaderNodeSettings();
-                try {
-                    m_frSettings.setDataFileLocationAndUpdateTableName(FileUtil.toURL(filename));
-                } catch (MalformedURLException mue) {
-                    LOGGER.error("FileReader: " + mue.getMessage());
-                    LOGGER.error("FileReader: Data file location not set.");
-                    m_frSettings = null;
-                }
-            }
-        }
-    }
+    //TODO check if necessary
+    //    /**
+    //     * Creates a new model and either read its settings from the specified file,
+    //     * if the filename ends with ".xml", or set the specified file name as
+    //     * default data file name for the configuration dialog. Settings in the
+    //     * model resulting from this constructor must not necessarily be correct or
+    //     * valid.
+    //     *
+    //     * @param filename valid URL to a data file or a XML configuration file. If
+    //     *            the filename ends with ".xml" it's considered a xml file spec.
+    //     */
+    //    public FileReaderNodeModel(final boolean filename) {
+    //        this();
+    //        if (filename != null) {
+    //            if ((filename.lastIndexOf('.') >= 0)
+    //                    && (filename.substring(filename.lastIndexOf('.'))
+    //                            .equals(".xml"))) {
+    //                // Its a XML file - try reading it in.
+    //                try {
+    //                    m_frSettings =
+    //                            FileReaderNodeSettings
+    //                                    .readSettingsFromXMLFile(filename);
+    //                } catch (IllegalStateException ise) {
+    //                    LOGGER.error("FileReader: " + ise.getMessage());
+    //                    LOGGER.error("FileReader: XML file not read.");
+    //                }
+    //            } else {
+    //                // doesn't have the XML extension - consider it a data file
+    //                m_frSettings = new FileReaderNodeSettings();
+    //                try {
+    //                    m_frSettings.setDataFileLocationAndUpdateTableName(FileUtil.toURL(filename));
+    //                } catch (MalformedURLException mue) {
+    //                    LOGGER.error("FileReader: " + mue.getMessage());
+    //                    LOGGER.error("FileReader: Data file location not set.");
+    //                    m_frSettings = null;
+    //                }
+    //            }
+    //        }
+    //    }
 
-    public FileReaderNodeModel(final NodeCreationContext droppedFile) {
-        this();
-        m_frSettings = new FileReaderNodeSettings();
-        m_frSettings
-                .setDataFileLocationAndUpdateTableName(droppedFile.getUrl());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void reset() {
-        // m_frSettings = null;
-    }
-
-    @Override
-    public StreamableOperator createStreamableOperator(final PartitionInfo partitionInfo,
-            final PortObjectSpec[] inSpecs)
-    throws InvalidSettingsException {
-
-        return new StreamableOperator() {
-
-            @Override
-            public void runFinal(final PortInput[] inputs, final PortOutput[] outputs, final ExecutionContext exec) throws Exception {
-                assert inputs.length == 0;
-
-
-                LOGGER.info("Preparing to read from '"
-                        + m_frSettings.getDataFileLocation().toString() + "'.");
-
-                // check again the settings - especially file existence (under Linux
-                // files could be deleted/renamed since last config-call...
-                SettingsStatus status = m_frSettings.getStatusOfSettings(true, null);
-                if (status.getNumOfErrors() > 0) {
-                    throw new InvalidSettingsException(status.getAllErrorMessages(10));
-                }
-
-                DataTableSpec tSpec = m_frSettings.createDataTableSpec();
-
-                FileTable fTable =
-                        new FileTable(tSpec, m_frSettings,
-                                m_frSettings.getSkippedColumns(), exec);
-
-                RowOutput rowOutput = (RowOutput)outputs[0]; // data output port
-
-                int row = 0;
-                FileRowIterator it = fTable.iterator();
-                try {
-                    if (it.getZipEntryName() != null) {
-                        // seems we are reading a ZIP archive.
-                        LOGGER.info("Reading entry '" + it.getZipEntryName()
-                                + "' from the specified ZIP archive.");
-                    }
-
-                    while (it.hasNext()) {
-                        row++;
-                        DataRow next = it.next();
-                        final int finalRow = row;
-                        exec.setMessage(() -> "Reading row #" + finalRow + " (\"" + next.getKey() + "\")" );
-                        exec.checkCanceled();
-                        rowOutput.push(next);
-                    }
-                    rowOutput.close();
-
-                    if (it.zippedSourceHasMoreEntries()) {
-                        // after reading til the end of the file this returns a valid
-                        // result
-                        setWarningMessage("Source is a ZIP archive with multiple "
-                                + "entries. Only reading first entry!");
-                    }
-                } catch (DuplicateKeyException dke) {
-                    String msg = dke.getMessage();
-                    if (msg == null) {
-                        msg = "Duplicate row IDs";
-                    }
-                    msg += ". Consider making IDs unique in the advanced settings.";
-                    DuplicateKeyException newDKE = new DuplicateKeyException(msg);
-                    newDKE.initCause(dke);
-                    throw newDKE;
-                }
-                // user settings allow for truncating the table
-                if (it.iteratorEndedEarly()) {
-                    setWarningMessage("Data was truncated due to user settings.");
-                }
-                // closes all sources.
-                fTable.dispose();
-            }
-        };
-    }
+    //TODO check if necessary
+    //    public FileReaderNodeModel(final NodeCreationContext droppedFile) {
+    //        this();
+    //        m_frSettings = new FileReaderNodeSettings();
+    //        m_frSettings
+    //                .setDataFileLocationAndUpdateTableName(droppedFile.getUrl());
+    //    }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    protected BufferedDataTable[] execute(final BufferedDataTable[] data,
-            final ExecutionContext exec) throws Exception {
-        DataTableSpec spec = m_frSettings.createDataTableSpec(false);
-        BufferedDataTableRowOutput output = new BufferedDataTableRowOutput(exec.createDataContainer(spec));
-        createStreamableOperator(null, null).runFinal(new PortInput[0], new PortOutput[] {output}, exec);
-        return new BufferedDataTable[] {output.getDataTable()};
-    }
-
-    /**
-     * @return the current settings for the file reader. Could be
-     *         <code>null</code>.
-     */
-    FileReaderSettings getFileReaderSettings() {
-        return m_frSettings;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected DataTableSpec[] configure(final DataTableSpec[] inSpecs)
-            throws InvalidSettingsException {
+    protected DataTableSpec[] configure(final DataTableSpec[] inSpecs) throws InvalidSettingsException {
         assert inSpecs.length == 0;
+
+        m_frSettings.getInputFileChooserModel().configureInModel(inSpecs, m_statusConsumer);
+        m_statusConsumer.setWarningsIfRequired(this::setWarningMessage);
 
         if (m_frSettings == null) {
             throw new InvalidSettingsException("No Settings available.");
@@ -274,20 +181,111 @@ public class FileReaderNodeModel extends NodeModel {
         throw new InvalidSettingsException(status.getAllErrorMessages(0));
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected BufferedDataTable[] execute(final BufferedDataTable[] data, final ExecutionContext exec)
+        throws Exception {
+        DataTableSpec spec = m_frSettings.createDataTableSpec(false);
+        BufferedDataTableRowOutput output = new BufferedDataTableRowOutput(exec.createDataContainer(spec));
+        createStreamableOperator(null, null).runFinal(new PortInput[0], new PortOutput[]{output}, exec);
+        return new BufferedDataTable[]{output.getDataTable()};
+    }
+
+    @Override
+    public StreamableOperator createStreamableOperator(final PartitionInfo partitionInfo,
+        final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
+
+        return new StreamableOperator() {
+
+            @Override
+            public void runFinal(final PortInput[] inputs, final PortOutput[] outputs, final ExecutionContext exec)
+                throws Exception {
+                assert inputs.length == 0;
+
+//                LOGGER.info("Preparing to read from '" + m_frSettings.getDataFileLocation().toString() + "'.");
+
+                // check again the settings - especially file existence (under Linux
+                // files could be deleted/renamed since last config-call...
+                SettingsStatus status = m_frSettings.getStatusOfSettings(true, null);
+                if (status.getNumOfErrors() > 0) {
+                    throw new InvalidSettingsException(status.getAllErrorMessages(10));
+                }
+
+                DataTableSpec tSpec = m_frSettings.createDataTableSpec();
+
+                try (ReadPathAccessor readAccessor = m_frSettings.getInputFileChooserModel().createReadPathAccessor()) {
+                    final Path path = readAccessor.getRootPath(m_statusConsumer);
+                    //TODO warning stuff
+
+                    FileTable fTable = new FileTable(tSpec, m_frSettings, m_frSettings.getSkippedColumns(), exec, path);
+
+                    RowOutput rowOutput = (RowOutput)outputs[0]; // data output port
+
+                    int row = 0;
+                    FileRowIterator it = fTable.iterator();
+                    try {
+                        if (it.getZipEntryName() != null) {
+                            // seems we are reading a ZIP archive.
+                            LOGGER.info("Reading entry '" + it.getZipEntryName() + "' from the specified ZIP archive.");
+                        }
+
+                        while (it.hasNext()) {
+                            row++;
+                            DataRow next = it.next();
+                            final int finalRow = row;
+                            exec.setMessage(() -> "Reading row #" + finalRow + " (\"" + next.getKey() + "\")");
+                            exec.checkCanceled();
+                            rowOutput.push(next);
+                        }
+                        rowOutput.close();
+
+                        if (it.zippedSourceHasMoreEntries()) {
+                            // after reading til the end of the file this returns a valid
+                            // result
+                            setWarningMessage(
+                                "Source is a ZIP archive with multiple " + "entries. Only reading first entry!");
+                        }
+                    } catch (DuplicateKeyException dke) {
+                        String msg = dke.getMessage();
+                        if (msg == null) {
+                            msg = "Duplicate row IDs";
+                        }
+                        msg += ". Consider making IDs unique in the advanced settings.";
+                        DuplicateKeyException newDKE = new DuplicateKeyException(msg);
+                        newDKE.initCause(dke);
+                        throw newDKE;
+                    }
+                    // user settings allow for truncating the table
+                    if (it.iteratorEndedEarly()) {
+                        setWarningMessage("Data was truncated due to user settings.");
+                    }
+                    // closes all sources.
+                    fTable.dispose();
+                }
+            }
+        };
+    }
+
+    /**
+     * @return the current settings for the file reader. Could be <code>null</code>.
+     */
+    FileReaderSettings getFileReaderSettings() {
+        return m_frSettings;
+    }
+
     /*
      * validates the settings object, or reads its settings from it. Depending
      * on the specified value of the 'validateOnly' parameter.
      */
-    private void readSettingsFromConfiguration(final NodeSettingsRO settings,
-            final boolean validateOnly) throws InvalidSettingsException {
+    private void readSettingsFromConfiguration(final NodeSettingsRO settings, final boolean validateOnly)
+        throws InvalidSettingsException {
         if (settings == null) {
-            throw new NullPointerException(
-                    "Can't read filereader node settings"
-                            + " from null config object");
+            throw new NullPointerException("Can't read filereader node settings" + " from null config object");
         }
         // will puke and die if config is not readable.
-        FileReaderNodeSettings newSettings =
-                new FileReaderNodeSettings(settings);
+        FileReaderNodeSettings newSettings = new FileReaderNodeSettings(settings, m_portsConfig);
 
         // check consistency of settings.
         SettingsStatus status = newSettings.getStatusOfSettings();
@@ -296,30 +294,27 @@ public class FileReaderNodeModel extends NodeModel {
         }
 
         if (!validateOnly) {
-            // everything looks good - take over the new settings.
-            m_frSettings = newSettings;
-            // save the filename to our filehistory
-            StringHistory h = StringHistory.getInstance(FILEREADER_HISTORY_ID);
-            h.add(m_frSettings.getDataFileLocation().toString());
+//            // everything looks good - take over the new settings.
+//            m_frSettings = newSettings;
+//            // save the filename to our filehistory
+//            StringHistory h = StringHistory.getInstance(FILEREADER_HISTORY_ID);
+//            h.add(m_frSettings.getDataFileLocation().toString());
         }
     }
 
     /**
-     * Reads in all user settings of the model. If they are incomplete,
-     * inconsistent, or in any way invalid it will throw an exception.
+     * Reads in all user settings of the model. If they are incomplete, inconsistent, or in any way invalid it will
+     * throw an exception.
      *
-     * @param settings the object to read the user settings from. Must not be
-     *            <code>null</code> and must be validated with the validate
-     *            method below.
-     * @throws InvalidSettingsException if the settings are incorrect - which
-     *             should not happen as they are supposed to be validated
-     *             before.
+     * @param settings the object to read the user settings from. Must not be <code>null</code> and must be validated
+     *            with the validate method below.
+     * @throws InvalidSettingsException if the settings are incorrect - which should not happen as they are supposed to
+     *             be validated before.
      * @see NodeModel#loadValidatedSettingsFrom(NodeSettingsRO)
      * @see NodeModel#validateSettings(NodeSettingsRO)
      */
     @Override
-    protected void loadValidatedSettingsFrom(final NodeSettingsRO settings)
-            throws InvalidSettingsException {
+    protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
         readSettingsFromConfiguration(settings, /* validateOnly = */false);
     }
 
@@ -332,32 +327,28 @@ public class FileReaderNodeModel extends NodeModel {
     protected void saveSettingsTo(final NodeSettingsWO settings) {
 
         if (settings == null) {
-            throw new NullPointerException("Can't write filereader node "
-                    + "settings into null config object.");
+            throw new NullPointerException("Can't write filereader node " + "settings into null config object.");
         }
         FileReaderNodeSettings s = m_frSettings;
 
         if (s == null) {
-            s = new FileReaderNodeSettings();
+            s = new FileReaderNodeSettings(m_portsConfig);
         }
         s.saveToConfiguration(settings);
 
     }
 
     /**
-     * Checks all user settings in the specified spec object. If they are
-     * incomplete, inconsistent, or in any way invalid it will throw an
-     * exception.
+     * Checks all user settings in the specified spec object. If they are incomplete, inconsistent, or in any way
+     * invalid it will throw an exception.
      *
-     * @param settings the object to read the user settings from. Must not be
-     *            <code>null</code>.
-     * @throws InvalidSettingsException if the settings in the specified object
-     *             are incomplete, inconsistent, or in any way invalid.
+     * @param settings the object to read the user settings from. Must not be <code>null</code>.
+     * @throws InvalidSettingsException if the settings in the specified object are incomplete, inconsistent, or in any
+     *             way invalid.
      * @see NodeModel#validateSettings(NodeSettingsRO)
      */
     @Override
-    protected void validateSettings(final NodeSettingsRO settings)
-            throws InvalidSettingsException {
+    protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         readSettingsFromConfiguration(settings, /* validateOnly = */true);
     }
 
@@ -365,9 +356,8 @@ public class FileReaderNodeModel extends NodeModel {
      * {@inheritDoc}
      */
     @Override
-    protected void loadInternals(final File nodeInternDir,
-            final ExecutionMonitor exec) throws IOException,
-            CanceledExecutionException {
+    protected void loadInternals(final File nodeInternDir, final ExecutionMonitor exec)
+        throws IOException, CanceledExecutionException {
         /*
          * This is a special "deal" for the file reader: The file reader, if
          * previously executed, has data at it's output - even if the file that
@@ -375,43 +365,39 @@ public class FileReaderNodeModel extends NodeModel {
          * data cannot be recreated we check here if the file exists and set a
          * warning message if it doesn't.
          */
-        if (m_frSettings == null) {
-            // no settings - no checking.
-            return;
-        }
-
-        URL location = m_frSettings.getDataFileLocation();
-        try {
-            if ((location == null) || !location.toString().startsWith("file:")) {
-                // We can only check files. Other protocols are ignored.
-                return;
-            }
-
-            InputStream inStream = location.openStream();
-            if (inStream == null) {
-                setWarningMessage("The file '" + location.toString()
-                        + "' can't be accessed anymore!");
-            } else {
-                inStream.close();
-            }
-        } catch (IOException ioe) {
-            setWarningMessage("The file '" + location.toString()
-                    + "' can't be accessed anymore!");
-        } catch (NullPointerException npe) {
-            // thats a bug in the windows open stream
-            // a path like c:\blah\ \ (space as dir) causes a NPE.
-            setWarningMessage("The file '" + location.toString()
-                    + "' can't be accessed anymore!");
-        }
+//        if (m_frSettings == null) {
+//            // no settings - no checking.
+//            return;
+//        }
+//
+//        URL location = m_frSettings.getDataFileLocation();
+//        try {
+//            if ((location == null) || !location.toString().startsWith("file:")) {
+//                // We can only check files. Other protocols are ignored.
+//                return;
+//            }
+//
+//            InputStream inStream = location.openStream();
+//            if (inStream == null) {
+//                setWarningMessage("The file '" + location.toString() + "' can't be accessed anymore!");
+//            } else {
+//                inStream.close();
+//            }
+//        } catch (IOException ioe) {
+//            setWarningMessage("The file '" + location.toString() + "' can't be accessed anymore!");
+//        } catch (NullPointerException npe) {
+//            // thats a bug in the windows open stream
+//            // a path like c:\blah\ \ (space as dir) causes a NPE.
+//            setWarningMessage("The file '" + location.toString() + "' can't be accessed anymore!");
+//        }
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    protected void saveInternals(final File nodeInternDir,
-            final ExecutionMonitor exec) throws IOException,
-            CanceledExecutionException {
+    protected void saveInternals(final File nodeInternDir, final ExecutionMonitor exec)
+        throws IOException, CanceledExecutionException {
         // no internals to save.
         return;
     }
@@ -447,6 +433,14 @@ public class FileReaderNodeModel extends NodeModel {
             }
         }
         return validLoc.toArray(new String[0]);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void reset() {
+        // m_frSettings = null;
     }
 
 }
