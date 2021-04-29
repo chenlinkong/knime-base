@@ -46,6 +46,7 @@ package org.knime.base.node.io.complexfilereader;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -95,6 +96,8 @@ public class FileTable implements DataTable {
     // list of all iterators to close the source, when the table is disposed of
     private final LinkedList<WeakReference<FileRowIterator>> m_iterators;
 
+    private final Path m_path;
+
     /**
      * Creates a new file table with the structure defined in tableSpec and
      * using the settings in frSettings when the file is read.
@@ -112,6 +115,12 @@ public class FileTable implements DataTable {
                 createFalseArray(tableSpec.getNumColumns()), exec);
     }
 
+    public FileTable(final DataTableSpec tableSpec,
+        final FileReaderSettings frSettings, final ExecutionContext exec, final Path path) {
+    this(tableSpec, frSettings,
+            createFalseArray(tableSpec.getNumColumns()), exec, path);
+}
+
     /**
      * Creates a new file table with the structure defined in tableSpec and
      * using the settings in frSettings when the file is read.
@@ -128,17 +137,23 @@ public class FileTable implements DataTable {
      * @param exec the execution context the progress is reported to; if null,
      *            no progress is reported
      */
-    public FileTable(final DataTableSpec tableSpec,
-            final FileReaderSettings frSettings, final boolean[] skipColumns,
-            final ExecutionContext exec) {
+    public FileTable(final DataTableSpec tableSpec, final FileReaderSettings frSettings, final boolean[] skipColumns,
+        final ExecutionContext exec) {
+        this(tableSpec, frSettings, skipColumns, exec, null);
+    }
+
+    public FileTable(final DataTableSpec tableSpec, final FileReaderSettings frSettings, final boolean[] skipColumns,
+        final ExecutionContext exec, final Path path) {
+
+        m_path = path;
 
         if ((tableSpec == null) || (frSettings == null)) {
-            throw new NullPointerException("Must specify non-null table spec"
-                    + " and file reader settings for file table.");
+            throw new NullPointerException(
+                "Must specify non-null table spec" + " and file reader settings for file table.");
         }
         if (skipColumns.length < tableSpec.getNumColumns()) {
-            throw new IllegalArgumentException("The number of columns can't"
-                    + " be larger than the spec for columns to skip");
+            throw new IllegalArgumentException(
+                "The number of columns can't" + " be larger than the spec for columns to skip");
         }
         int cols = 0;
         for (boolean b : skipColumns) {
@@ -148,8 +163,7 @@ public class FileTable implements DataTable {
         }
         if (cols != tableSpec.getNumColumns()) {
             throw new IllegalArgumentException("The number of columns to "
-                    + "include is different from the number of columns in the"
-                    + " table spec.");
+                + "include is different from the number of columns in the" + " table spec.");
         }
         m_iterators = new LinkedList<WeakReference<FileRowIterator>>();
         m_tableSpec = tableSpec;
@@ -197,20 +211,21 @@ public class FileTable implements DataTable {
     /**
      * {@inheritDoc}
      */
+    @Override
     public FileRowIterator iterator() {
         try {
             synchronized (m_iterators) {
                 FileRowIterator i =
                         new FileRowIterator(m_frSettings, m_tableSpec,
-                                m_skipColums, m_exec);
+                                m_skipColums, m_exec, m_path);
                 m_iterators.add(new WeakReference<FileRowIterator>(i));
                 return i;
 
             }
         } catch (IOException ioe) {
-            LOGGER.error("I/O Error occurred while trying to open a stream"
-                    + " to '" + m_frSettings.getDataFileLocation().toString()
-                    + "'.");
+//            LOGGER.error("I/O Error occurred while trying to open a stream"
+//                    + " to '" + m_frSettings.getDataFileLocation().toString()
+//                    + "'.");
         }
         return null;
     }
@@ -218,6 +233,7 @@ public class FileTable implements DataTable {
     /**
      * {@inheritDoc}
      */
+    @Override
     public DataTableSpec getDataTableSpec() {
         return m_tableSpec;
     }
@@ -262,7 +278,7 @@ public class FileTable implements DataTable {
         } else {
             // we do that here - still.
             addTableSpecStatusOfSettings(status, m_tableSpec);
-            m_frSettings.addStatusOfSettings(status, openDataFile, m_tableSpec);
+//            m_frSettings.addStatusOfSettings(status, openDataFile, m_tableSpec);
         }
 
     }
