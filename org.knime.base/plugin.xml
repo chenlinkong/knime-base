@@ -553,10 +553,6 @@
       <node
             factory-class="org.knime.base.node.mine.smote.SmoteNodeFactory"
             category-path="/manipulation/column/column-transform"/>
-       <node
-            category-path="/io/read"
-            factory-class="org.knime.base.node.io.filereader.ComplexFileReaderNodeFactory">
-      </node>
       <node
             category-path="/io/read"
             factory-class="org.knime.base.node.io.filereader.FileReaderNodeFactory">
