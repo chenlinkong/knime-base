@@ -47,29 +47,24 @@
  */
 package org.knime.base.node.io.complexfilereader;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Vector;
 
-import javax.xml.parsers.ParserConfigurationException;
-
 import org.knime.core.data.DataCell;
 import org.knime.core.data.DataColumnSpec;
-import org.knime.core.data.DataColumnSpecCreator;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.DataType;
-import org.knime.core.data.def.IntCell;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.util.tokenizer.SettingsStatus;
-import org.xml.sax.SAXException;
+import org.knime.filehandling.core.defaultnodesettings.EnumConfig;
+import org.knime.filehandling.core.defaultnodesettings.filechooser.reader.SettingsModelReaderFileChooser;
+import org.knime.filehandling.core.defaultnodesettings.filtermode.SettingsModelFilterMode.FilterMode;
 
 /**
  *
@@ -118,6 +113,26 @@ public class FileReaderNodeSettings extends FileReaderSettings {
 
     private boolean m_analyzedAllRows;
 
+    //TODO new stuff below
+
+    private static final String CFG_INPUT_FILE = "source_location";
+
+    private SettingsModelReaderFileChooser m_inputFileChooserModel;
+
+    private PortsConfiguration m_portsConfig;
+
+    /**
+     * Returns the {@link SettingsModelReaderFileChooser} used to select a directory where the files are extracted to.
+     *
+     * @return the {@link SettingsModelReaderFileChooser} used to select a directory
+     */
+    SettingsModelReaderFileChooser getInputFileChooserModel() {
+        return m_inputFileChooserModel;
+    }
+
+
+  //TODO new stuff above
+
     /**
      * Creates a new settings object for the file reader note and initializes it
      * from the config object passed. If <code>null</code> is passed default
@@ -129,9 +144,54 @@ public class FileReaderNodeSettings extends FileReaderSettings {
      * @throws InvalidSettingsException if the settings in the config object are
      *             incomplete, inconsistent or in any other was invalid
      */
-    FileReaderNodeSettings(final NodeSettingsRO cfg)
+//    FileReaderNodeSettings(final NodeSettingsRO cfg)
+//            throws InvalidSettingsException {
+//        super(cfg);
+//
+//        m_inputFileChooserModel =  new SettingsModelReaderFileChooser(CFG_INPUT_FILE, m_portsConfig,
+//            FileReaderNodeFactory.CONNECTION_INPUT_PORT_GRP_NAME, EnumConfig.create(FilterMode.FILE));
+//
+//        m_columnProperties = new Vector<ColProperty>();
+//
+//        m_numOfColumns = -1;
+//
+//        if (cfg != null) {
+//            m_numOfColumns = cfg.getInt(CFGKEY_NUMOFCOLS);
+//            readColumnPropsFromConfig(cfg.getNodeSettings(CFGKEY_COLPROPS));
+//            m_delimsAtEOLUserValue =
+//                    cfg.getBoolean(CFGKEY_EOLDELIMUSERVAL,
+//                            ignoreEmptyTokensAtEndOfRow());
+//
+//            // check settings
+//            SettingsStatus status = getStatusOfSettings();
+//            if (status.getNumOfErrors() != 0) {
+//                throw new InvalidSettingsException(
+//                        status.getAllErrorMessages(0));
+//            }
+//        } else {
+//            setDefaultSettings();
+//        }
+//        // all these values were set through the config
+//        m_hasColHeadersIsSet = true;
+//        m_hasRowHeadersIsSet = true;
+//        m_commentIsSet = true;
+//        m_quoteIsSet = true;
+//        m_delimIsSet = true;
+//        m_whiteIsSet = true;
+//        m_ignoreEmptyLinesIsSet = true;
+//        m_ignoreDelimsAtEndOfRowIsSet = true;
+//        m_decimalSeparatorIsSet = true;
+//        m_charsetIsSet = true;
+//        m_analyzedAllRows = false;
+//    }
+
+    FileReaderNodeSettings(final NodeSettingsRO cfg, final PortsConfiguration portsConfig)
             throws InvalidSettingsException {
         super(cfg);
+
+        m_inputFileChooserModel =  new SettingsModelReaderFileChooser(CFG_INPUT_FILE, portsConfig,
+            FileReaderNodeFactory.CONNECTION_INPUT_PORT_GRP_NAME, EnumConfig.create(FilterMode.FILE));
+
         m_columnProperties = new Vector<ColProperty>();
 
         m_numOfColumns = -1;
@@ -174,6 +234,7 @@ public class FileReaderNodeSettings extends FileReaderSettings {
      */
     FileReaderNodeSettings(final FileReaderNodeSettings clonee) {
         super(clonee);
+        m_inputFileChooserModel = clonee.getInputFileChooserModel();
 
         m_columnProperties =
                 new Vector<ColProperty>(clonee.m_columnProperties.size());
@@ -204,9 +265,34 @@ public class FileReaderNodeSettings extends FileReaderSettings {
     /**
      * Creates an empty settings object. It contains no default values.
      */
-    public FileReaderNodeSettings() {
+    public FileReaderNodeSettings(final PortsConfiguration portsConfig) {
         m_columnProperties = new Vector<ColProperty>();
+        m_inputFileChooserModel = new SettingsModelReaderFileChooser(CFG_INPUT_FILE, portsConfig,
+            FileReaderNodeFactory.CONNECTION_INPUT_PORT_GRP_NAME, EnumConfig.create(FilterMode.FILE));
 
+        m_portsConfig = portsConfig;
+
+        m_numOfColumns = -1;
+
+        m_hasColHeadersIsSet = false;
+        m_hasRowHeadersIsSet = false;
+        m_ignoreEmptyLinesIsSet = false;
+        m_ignoreDelimsAtEndOfRowIsSet = false;
+        m_decimalSeparatorIsSet = false;
+        m_delimsAtEOLUserValue = false;
+        m_commentIsSet = false;
+        m_quoteIsSet = false;
+        m_delimIsSet = false;
+        m_whiteIsSet = false;
+        m_charsetIsSet = false;
+        m_analyzedAllRows = false;
+    }
+
+
+    public FileReaderNodeSettings() {
+        m_inputFileChooserModel =  new SettingsModelReaderFileChooser(CFG_INPUT_FILE, m_portsConfig,
+            FileReaderNodeFactory.CONNECTION_INPUT_PORT_GRP_NAME, EnumConfig.create(FilterMode.FILE));
+        m_columnProperties = new Vector<ColProperty>();
         m_numOfColumns = -1;
 
         m_hasColHeadersIsSet = false;
@@ -235,6 +321,7 @@ public class FileReaderNodeSettings extends FileReaderSettings {
         cfg.addBoolean(CFGKEY_EOLDELIMUSERVAL, m_delimsAtEOLUserValue);
         cfg.addInt(CFGKEY_NUMOFCOLS, m_numOfColumns);
         saveColumnPropsToConfig(cfg.addNodeSettings(CFGKEY_COLPROPS));
+        m_inputFileChooserModel.saveSettingsTo(cfg);
     }
 
     /*
@@ -437,7 +524,7 @@ public class FileReaderNodeSettings extends FileReaderSettings {
             }
         }
 
-        return new DataTableSpec(getTableName(),
+        return new DataTableSpec("TODO",
                 cSpec.toArray(new DataColumnSpec[cSpec.size()]));
     }
 
@@ -469,7 +556,7 @@ public class FileReaderNodeSettings extends FileReaderSettings {
         setNumberOfColumns(1);
 
         // now the filereader settings
-        setDataFileLocationAndUpdateTableName(null);
+//        setDataFileLocationAndUpdateTableName(null);
         setFileHasColumnHeaders(true);
         setFileHasRowHeaders(true);
         setRowHeaderPrefix(null);
@@ -499,131 +586,131 @@ public class FileReaderNodeSettings extends FileReaderSettings {
      *
      * @throws IllegalStateException if something goes wrong
      */
-    public static FileReaderNodeSettings readSettingsFromXMLFile(
-            final String xmlLocation) {
-        URL xmlURL = null;
-        XMLPropsReader xmlReader = null;
-
-        // convert location string to URL - at least try.
-        if ((xmlLocation == null) || (xmlLocation.equals(""))) {
-            throw new IllegalStateException("Specify a not empty "
-                    + "valid URL for the XML file to read.");
-        }
-        try {
-            xmlURL = new URL(xmlLocation);
-        } catch (Exception e) {
-            // see if they specified a file without giving the protocol
-            File tmp = new File(xmlLocation);
-
-            try {
-                // if this blows up we give up
-                xmlURL = tmp.getAbsoluteFile().toURI().toURL();
-            } catch (MalformedURLException mue) {
-                throw new IllegalStateException("Cannot convert '"
-                        + xmlLocation + "' to a valid URL.");
-            }
-        }
-
-        assert xmlURL != null;
-
-        try {
-            // reads in the XML file and stores it internally
-            xmlReader = new XMLPropsReader(xmlURL);
-
-        } catch (IOException ioe) {
-            if (ioe.getMessage() != null) {
-                throw new IllegalStateException("I/O Error: "
-                        + ioe.getMessage() + "\n while reading '" + xmlURL
-                        + "'.");
-            } else {
-                throw new IllegalStateException("I/O Error: While trying to "
-                        + "read '" + xmlURL + "'.");
-            }
-        } catch (SAXException saxe) {
-            if (saxe.getMessage() != null) {
-                throw new IllegalStateException("Parser Error: "
-                        + saxe.getMessage() + "\n while reading '" + xmlURL
-                        + "'.");
-            } else {
-                throw new IllegalStateException("Parser Error: While trying "
-                        + "to read '" + xmlURL + "'.");
-            }
-        } catch (ParserConfigurationException pce) {
-            throw new IllegalStateException("Parser ConfError: While trying "
-                    + "to read '" + xmlURL + "'.");
-        }
-
-        FileReaderNodeSettings frSettings = new FileReaderNodeSettings();
-
-        try {
-            int numOfCols = xmlReader.getNumColumns();
-            frSettings.setDataFileLocationAndUpdateTableName(xmlReader
-                    .getDataFileURL());
-            frSettings.setNumberOfColumns(numOfCols);
-            frSettings.setFileHasColumnHeaders(xmlReader
-                    .isColumnHeaderSpecified());
-            frSettings.setFileHasRowHeaders(xmlReader.isRowHeaderSpecified());
-            if (xmlReader.getColumnDelimiter() != null) {
-                frSettings.addDelimiterPattern(xmlReader.getColumnDelimiter(),
-                        false, false, false);
-            }
-            if (!xmlReader.isRowHeaderSpecified()) {
-                frSettings.setRowHeaderPrefix(xmlReader.getRowPrefix());
-            } // otherwise we ignore the prefix - that's how we always did it.
-            if (xmlReader.getRowDelimiter() != null) {
-                frSettings.addRowDelimiter(xmlReader.getRowDelimiter(), false);
-            }
-            if (xmlReader.getLineComment() != null) {
-                frSettings.addSingleLineCommentPattern(
-                        xmlReader.getLineComment(), false, false);
-            }
-            if ((xmlReader.getBlockCommentLeft() != null)
-                    && (xmlReader.getBlockCommentRight() != null)) {
-                frSettings.addBlockCommentPattern(
-                        xmlReader.getBlockCommentLeft(),
-                        xmlReader.getBlockCommentRight(), false, false);
-            }
-            if ((xmlReader.getQuoteLeft() != null)
-                    && (xmlReader.getQuoteRight() != null)) {
-                if ((xmlReader.getQuoteEscape() != null)
-                        && (xmlReader.getQuoteEscape().length() > 0)) {
-                    frSettings.addQuotePattern(xmlReader.getQuoteLeft(),
-                            xmlReader.getQuoteRight(), xmlReader
-                                    .getQuoteEscape().charAt(0));
-                }
-            }
-            Vector<ColProperty> cProps = new Vector<ColProperty>();
-            for (int c = 0; c < numOfCols; c++) {
-                String missVal = xmlReader.getColumnMissing(c);
-                DataType type = xmlReader.getColumnType(c);
-                String name = null;
-                // create the ColProperty object
-                ColProperty cProp = new ColProperty();
-
-                cProp.setUserSettings(true);
-                name = xmlReader.getColumnName(c);
-                cProp.setMissingValuePattern(missVal);
-
-                if (type.equals(IntCell.TYPE)) {
-                    // we could read possible values for int column.
-                    // Default is false though.
-                    cProp.setReadPossibleValuesFromFile(false);
-                }
-                DataColumnSpecCreator dcsc =
-                        new DataColumnSpecCreator(name, type);
-                cProp.setColumnSpec(dcsc.createSpec());
-                cProps.add(cProp);
-            }
-
-            frSettings.setColumnProperties(cProps);
-
-        } catch (Exception e) {
-            throw new IllegalStateException("Error reading xml file. "
-                    + e.getMessage());
-        }
-
-        return frSettings;
-    }
+//    public static FileReaderNodeSettings readSettingsFromXMLFile(
+//            final String xmlLocation) {
+//        URL xmlURL = null;
+//        XMLPropsReader xmlReader = null;
+//
+//        // convert location string to URL - at least try.
+//        if ((xmlLocation == null) || (xmlLocation.equals(""))) {
+//            throw new IllegalStateException("Specify a not empty "
+//                    + "valid URL for the XML file to read.");
+//        }
+//        try {
+//            xmlURL = new URL(xmlLocation);
+//        } catch (Exception e) {
+//            // see if they specified a file without giving the protocol
+//            File tmp = new File(xmlLocation);
+//
+//            try {
+//                // if this blows up we give up
+//                xmlURL = tmp.getAbsoluteFile().toURI().toURL();
+//            } catch (MalformedURLException mue) {
+//                throw new IllegalStateException("Cannot convert '"
+//                        + xmlLocation + "' to a valid URL.");
+//            }
+//        }
+//
+//        assert xmlURL != null;
+//
+//        try {
+//            // reads in the XML file and stores it internally
+//            xmlReader = new XMLPropsReader(xmlURL);
+//
+//        } catch (IOException ioe) {
+//            if (ioe.getMessage() != null) {
+//                throw new IllegalStateException("I/O Error: "
+//                        + ioe.getMessage() + "\n while reading '" + xmlURL
+//                        + "'.");
+//            } else {
+//                throw new IllegalStateException("I/O Error: While trying to "
+//                        + "read '" + xmlURL + "'.");
+//            }
+//        } catch (SAXException saxe) {
+//            if (saxe.getMessage() != null) {
+//                throw new IllegalStateException("Parser Error: "
+//                        + saxe.getMessage() + "\n while reading '" + xmlURL
+//                        + "'.");
+//            } else {
+//                throw new IllegalStateException("Parser Error: While trying "
+//                        + "to read '" + xmlURL + "'.");
+//            }
+//        } catch (ParserConfigurationException pce) {
+//            throw new IllegalStateException("Parser ConfError: While trying "
+//                    + "to read '" + xmlURL + "'.");
+//        }
+//
+//        FileReaderNodeSettings frSettings = new FileReaderNodeSettings();
+//
+//        try {
+//            int numOfCols = xmlReader.getNumColumns();
+//            frSettings.setDataFileLocationAndUpdateTableName(xmlReader
+//                    .getDataFileURL());
+//            frSettings.setNumberOfColumns(numOfCols);
+//            frSettings.setFileHasColumnHeaders(xmlReader
+//                    .isColumnHeaderSpecified());
+//            frSettings.setFileHasRowHeaders(xmlReader.isRowHeaderSpecified());
+//            if (xmlReader.getColumnDelimiter() != null) {
+//                frSettings.addDelimiterPattern(xmlReader.getColumnDelimiter(),
+//                        false, false, false);
+//            }
+//            if (!xmlReader.isRowHeaderSpecified()) {
+//                frSettings.setRowHeaderPrefix(xmlReader.getRowPrefix());
+//            } // otherwise we ignore the prefix - that's how we always did it.
+//            if (xmlReader.getRowDelimiter() != null) {
+//                frSettings.addRowDelimiter(xmlReader.getRowDelimiter(), false);
+//            }
+//            if (xmlReader.getLineComment() != null) {
+//                frSettings.addSingleLineCommentPattern(
+//                        xmlReader.getLineComment(), false, false);
+//            }
+//            if ((xmlReader.getBlockCommentLeft() != null)
+//                    && (xmlReader.getBlockCommentRight() != null)) {
+//                frSettings.addBlockCommentPattern(
+//                        xmlReader.getBlockCommentLeft(),
+//                        xmlReader.getBlockCommentRight(), false, false);
+//            }
+//            if ((xmlReader.getQuoteLeft() != null)
+//                    && (xmlReader.getQuoteRight() != null)) {
+//                if ((xmlReader.getQuoteEscape() != null)
+//                        && (xmlReader.getQuoteEscape().length() > 0)) {
+//                    frSettings.addQuotePattern(xmlReader.getQuoteLeft(),
+//                            xmlReader.getQuoteRight(), xmlReader
+//                                    .getQuoteEscape().charAt(0));
+//                }
+//            }
+//            Vector<ColProperty> cProps = new Vector<ColProperty>();
+//            for (int c = 0; c < numOfCols; c++) {
+//                String missVal = xmlReader.getColumnMissing(c);
+//                DataType type = xmlReader.getColumnType(c);
+//                String name = null;
+//                // create the ColProperty object
+//                ColProperty cProp = new ColProperty();
+//
+//                cProp.setUserSettings(true);
+//                name = xmlReader.getColumnName(c);
+//                cProp.setMissingValuePattern(missVal);
+//
+//                if (type.equals(IntCell.TYPE)) {
+//                    // we could read possible values for int column.
+//                    // Default is false though.
+//                    cProp.setReadPossibleValuesFromFile(false);
+//                }
+//                DataColumnSpecCreator dcsc =
+//                        new DataColumnSpecCreator(name, type);
+//                cProp.setColumnSpec(dcsc.createSpec());
+//                cProps.add(cProp);
+//            }
+//
+//            frSettings.setColumnProperties(cProps);
+//
+//        } catch (Exception e) {
+//            throw new IllegalStateException("Error reading xml file. "
+//                    + e.getMessage());
+//        }
+//
+//        return frSettings;
+//    }
 
     /**
      * Set true to indicate that the flag is actually set and is not still the
@@ -860,7 +947,7 @@ public class FileReaderNodeSettings extends FileReaderSettings {
 
         SettingsStatus status = new SettingsStatus();
 
-        addStatusOfSettings(status, openDataFile, tableSpec);
+//        addStatusOfSettings(status, openDataFile, tableSpec);
 
         return status;
     }
@@ -871,22 +958,22 @@ public class FileReaderNodeSettings extends FileReaderSettings {
      *
      * {@inheritDoc}
      */
-    @Override
-    protected void addStatusOfSettings(final SettingsStatus status,
-            final boolean openDataFile, final DataTableSpec tableSpec) {
-
-        if (getDataFileLocation() != null && m_numOfColumns < 0) {
-            /*
-             * Special case: the file location is set and no other settings are
-             * specified. This occurs when a file is dropped on the editor. No
-             * other error/status messages should be added then.
-             */
-            status.addError("Missing settings. Please configure the node.");
-        } else {
-            super.addStatusOfSettings(status, openDataFile, tableSpec);
-            addThisStatus(status);
-        }
-    }
+//    @Override
+//    protected void addStatusOfSettings(final SettingsStatus status,
+//            final boolean openDataFile, final DataTableSpec tableSpec) {
+//
+//        if (getDataFileLocation() != null && m_numOfColumns < 0) {
+//            /*
+//             * Special case: the file location is set and no other settings are
+//             * specified. This occurs when a file is dropped on the editor. No
+//             * other error/status messages should be added then.
+//             */
+//            status.addError("Missing settings. Please configure the node.");
+//        } else {
+//            super.addStatusOfSettings(status, openDataFile, tableSpec);
+//            addThisStatus(status);
+//        }
+//    }
 
     private void addThisStatus(final SettingsStatus status) {
 
