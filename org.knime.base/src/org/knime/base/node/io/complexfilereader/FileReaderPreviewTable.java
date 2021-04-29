@@ -48,6 +48,7 @@
 package org.knime.base.node.io.complexfilereader;
 
 import java.lang.ref.WeakReference;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -100,7 +101,7 @@ public class FileReaderPreviewTable implements DataTable {
     FileReaderPreviewTable(final DataTableSpec tableSpec,
             final FileReaderNodeSettings settings,
             final ExecutionContext exec) {
-        m_table = new FileTable(tableSpec, settings, exec);
+        m_table = new FileTable(tableSpec, settings, exec, Paths.get("C:\\Users\\lars.schweikardt\\Desktop\\adultBackslashN.csv"));
         m_listeners = new CopyOnWriteArrayList<ChangeListener>();
         m_iterators =
                 new LinkedList<WeakReference<FileReaderPreviewRowIterator>>();
