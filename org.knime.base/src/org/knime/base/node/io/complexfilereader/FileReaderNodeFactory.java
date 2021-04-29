@@ -1,5 +1,6 @@
 /*
  * ------------------------------------------------------------------------
+ *
  *  Copyright by KNIME AG, Zurich, Switzerland
  *  Website: http://www.knime.com; Email: contact@knime.com
  *
@@ -40,90 +41,63 @@
  *  propagated with or for interoperation with KNIME.  The owner of a Node
  *  may freely choose the license terms applicable to such Node, including
  *  when such Node is propagated with or for interoperation with KNIME.
- * ------------------------------------------------------------------------
+ * ---------------------------------------------------------------------
+ *
+ * History
+ *   26.04.2021 (lars.schweikardt): created
  */
 package org.knime.base.node.io.complexfilereader;
 
-import org.knime.core.node.ContextAwareNodeFactory;
-import org.knime.core.node.NodeCreationContext;
+import java.util.Optional;
+
+import org.knime.core.node.BufferedDataTable;
+import org.knime.core.node.ConfigurableNodeFactory;
 import org.knime.core.node.NodeDialogPane;
 import org.knime.core.node.NodeView;
+import org.knime.core.node.context.NodeCreationConfiguration;
+import org.knime.filehandling.core.port.FileSystemPortObject;
 
 /**
- * @author Peter Ohl, University of Konstanz
+ *
+ * @author lars.schweikardt
+ * @since 4.4
  */
-public class FileReaderNodeFactory extends
-    ContextAwareNodeFactory<FileReaderNodeModel> {
+public final class FileReaderNodeFactory extends ConfigurableNodeFactory<FileReaderNodeModel> {
 
-    private String m_defaultXMLFile;
+    static final String CONNECTION_INPUT_PORT_GRP_NAME = "File System Connection";
 
-    /**
-     * @param defXMLFileName this string will be set as default path to a XML
-     *            file containing settings for the dialog. Won't be supported in
-     *            the future anymore.
-     */
-    public FileReaderNodeFactory(final String defXMLFileName) {
-        m_defaultXMLFile = defXMLFileName;
-    }
+    static final String OUTPUT_PORT_GRP_NAME = "Output Port";
 
-    /**
-     * Default constructor.
-     */
-    public FileReaderNodeFactory() {
-        m_defaultXMLFile = null;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public FileReaderNodeModel createNodeModel() {
-        if (m_defaultXMLFile == null) {
-            return new FileReaderNodeModel();
-        } else {
-            return new FileReaderNodeModel(m_defaultXMLFile);
-        }
+    protected Optional<PortsConfigurationBuilder> createPortsConfigBuilder() {
+        final PortsConfigurationBuilder b = new PortsConfigurationBuilder();
+        b.addOptionalInputPortGroup(CONNECTION_INPUT_PORT_GRP_NAME, FileSystemPortObject.TYPE);
+        b.addFixedOutputPortGroup(OUTPUT_PORT_GRP_NAME, BufferedDataTable.TYPE);
+        return Optional.of(b);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public FileReaderNodeModel createNodeModel(final NodeCreationContext context) {
-        return new FileReaderNodeModel(context);
+    protected FileReaderNodeModel createNodeModel(final NodeCreationConfiguration creationConfig) {
+        return new FileReaderNodeModel(creationConfig.getPortConfig().orElseThrow(IllegalStateException::new));
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public int getNrNodeViews() {
+    protected NodeDialogPane createNodeDialogPane(final NodeCreationConfiguration creationConfig) {
+        return new FileReaderNodeDialog(creationConfig.getPortConfig().orElseThrow(IllegalStateException::new));
+    }
+
+    @Override
+    protected int getNrNodeViews() {
         return 0;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public NodeView<FileReaderNodeModel> createNodeView(final int i,
-            final FileReaderNodeModel nodeModel) {
-        throw new IllegalStateException();
+    public NodeView<FileReaderNodeModel> createNodeView(final int viewIndex, final FileReaderNodeModel nodeModel) {
+        return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public boolean hasDialog() {
+    protected boolean hasDialog() {
         return true;
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public NodeDialogPane createNodeDialogPane() {
-        return new FileReaderNodeDialog();
-    }
-
 }
