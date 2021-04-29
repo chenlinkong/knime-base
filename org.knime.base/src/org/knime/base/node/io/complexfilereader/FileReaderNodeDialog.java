@@ -102,6 +102,7 @@ import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.NotConfigurableException;
 import org.knime.core.node.context.ports.PortsConfiguration;
+import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.tableview.TableRowHeaderView;
 import org.knime.core.node.tableview.TableView;
 import org.knime.core.node.util.ViewUtils;
@@ -237,11 +238,14 @@ class FileReaderNodeDialog extends NodeDialogPane {
 
     private JCheckBox m_preserveSettings;
 
+    private PortsConfiguration m_portsconfig;
+
     /**
      * Creates a new file reader dialog pane.
      */
     FileReaderNodeDialog(final PortsConfiguration portsConfig) {
         super();
+        m_portsconfig = portsConfig;
         m_frSettings = new FileReaderNodeSettings(portsConfig);
         m_insideLoadDelim = false;
         m_insideDelimChange = false;
@@ -1106,13 +1110,9 @@ class FileReaderNodeDialog extends NodeDialogPane {
      * {@inheritDoc}
      */
     @Override
-    protected void loadSettingsFrom(final NodeSettingsRO settings,
-            final DataTableSpec[] specs) throws NotConfigurableException {
-
-        /*
-         * TODO: We need to synchronize the NodeSettings object
-         */
-
+    protected void loadSettingsFrom(final NodeSettingsRO settings, final PortObjectSpec[] specs)
+        throws NotConfigurableException {
+        m_filePanel.loadSettingsFrom(settings, specs);
         ViewUtils.invokeAndWaitInEDT(new Runnable() {
             @Override
             public void run() {
@@ -1121,12 +1121,32 @@ class FileReaderNodeDialog extends NodeDialogPane {
         });
     }
 
+    //TODO
+//    /**
+//     * {@inheritDoc}
+//     */
+//    @Override
+//    protected void loadSettingsFrom(final NodeSettingsRO settings,
+//            final DataTableSpec[] specs) throws NotConfigurableException {
+//
+//        /*
+//         * TODO: We need to synchronize the NodeSettings object
+//         */
+//
+//        ViewUtils.invokeAndWaitInEDT(new Runnable() {
+//            @Override
+//            public void run() {
+//                loadSettingsFromInternal(settings, specs);
+//            }
+//        });
+//    }
+
     /**
      * We do the entire load settings in the Event/GUI thread as it accesses a
      * lot of GUI components.
      */
     private void loadSettingsFromInternal(final NodeSettingsRO settings,
-            final DataTableSpec[] specs) {
+            final PortObjectSpec[] specs) {
         assert (settings != null && specs != null);
 
 //        m_filePanel.setSelectedFile("");
@@ -1183,6 +1203,8 @@ class FileReaderNodeDialog extends NodeDialogPane {
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings)
             throws InvalidSettingsException {
+
+        m_filePanel.saveSettingsTo(settings);
 
         /*
          * TODO: We need to synchronize the NodeSettings object
@@ -1530,7 +1552,7 @@ class FileReaderNodeDialog extends NodeDialogPane {
                     // analyze the file now.
                     FileReaderNodeSettings newSettings =
                             FileAnalyzer.analyze(userSettings,
-                                    m_analysisExecMonitor);
+                                    m_analysisExecMonitor, m_portsconfig);
 
                     if (m_analysisExecMonitor.wasInterrupted()) {
                         // if the code stopped us, do nothing more
@@ -1628,6 +1650,8 @@ class FileReaderNodeDialog extends NodeDialogPane {
             showPreviewTable();
             return;
         }
+        
+        //TODO i need a path here?
         DataTableSpec tSpec = previewSettings.createDataTableSpec();
         FileReaderPreviewTable newTable =
                 new FileReaderPreviewTable(tSpec, previewSettings, null);

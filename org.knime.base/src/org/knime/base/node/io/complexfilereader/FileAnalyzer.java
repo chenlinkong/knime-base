@@ -71,6 +71,7 @@ import org.knime.core.node.CanceledExecutionException;
 import org.knime.core.node.ExecutionMonitor;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeLogger;
+import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.tableview.TableContentModel;
 import org.knime.core.util.tokenizer.Comment;
 import org.knime.core.util.tokenizer.Delimiter;
@@ -132,7 +133,7 @@ public final class FileAnalyzer {
      *         may not contain any settings if guessing was just too hard.
      * @throws IOException if there was an error reading from the URL
      */
-    public static FileReaderNodeSettings analyze(final FileReaderNodeSettings userSettings, final ExecutionMonitor exec)
+    public static FileReaderNodeSettings analyze(final FileReaderNodeSettings userSettings, final ExecutionMonitor exec, final PortsConfiguration portsConfig)
         throws IOException {
         //        if (userSettings.getDataFileLocation() == null) {
         //            throw new IllegalArgumentException("Must specify a valid file location for the file analyzer");
@@ -157,10 +158,11 @@ public final class FileAnalyzer {
             }
 
             // create the new and empty settings
-            FileReaderNodeSettings result = new FileReaderNodeSettings(userSettings);
+            FileReaderNodeSettings result = new FileReaderNodeSettings(portsConfig);
 
             execMon.setProgress(0.0);
             try {
+                result.setInputFileChooserModel(userSettings.getInputFileChooserModel());
                 result.setDecimalSeparator(userSettings.getDecimalSeparator());
                 result.setThousandsSeparator(userSettings.getThousandsSeparator());
                 result.setDecimalSeparatorUserSet(userSettings.decimalSeparatorUserSet());
@@ -1053,9 +1055,8 @@ public final class FileAnalyzer {
     private static void addQuotes(final FileReaderNodeSettings settings, final ExecutionMonitor exec, final Path path)
         throws IOException, InterruptedExecutionException {
         assert settings != null;
-//        assert settings.getAllQuotes().size() == 0;
-//        assert settings.getDataFileLocation() != null;
-//        assert settings.getAllDelimiters().size() == 0;
+        assert settings.getAllQuotes().size() == 0;
+        assert settings.getAllDelimiters().size() == 0;
 
         BufferedFileReader reader = settings.createNewInputReader(path);
         Tokenizer tokenizer = new Tokenizer(reader);

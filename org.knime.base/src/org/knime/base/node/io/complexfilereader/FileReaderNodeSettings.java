@@ -130,6 +130,11 @@ public class FileReaderNodeSettings extends FileReaderSettings {
         return m_inputFileChooserModel;
     }
 
+    void setInputFileChooserModel(final SettingsModelReaderFileChooser model) {
+        m_inputFileChooserModel = model;
+    }
+
+
 
   //TODO new stuff above
 
@@ -290,8 +295,6 @@ public class FileReaderNodeSettings extends FileReaderSettings {
 
 
     public FileReaderNodeSettings() {
-        m_inputFileChooserModel =  new SettingsModelReaderFileChooser(CFG_INPUT_FILE, m_portsConfig,
-            FileReaderNodeFactory.CONNECTION_INPUT_PORT_GRP_NAME, EnumConfig.create(FilterMode.FILE));
         m_columnProperties = new Vector<ColProperty>();
         m_numOfColumns = -1;
 
@@ -321,7 +324,6 @@ public class FileReaderNodeSettings extends FileReaderSettings {
         cfg.addBoolean(CFGKEY_EOLDELIMUSERVAL, m_delimsAtEOLUserValue);
         cfg.addInt(CFGKEY_NUMOFCOLS, m_numOfColumns);
         saveColumnPropsToConfig(cfg.addNodeSettings(CFGKEY_COLPROPS));
-        m_inputFileChooserModel.saveSettingsTo(cfg);
     }
 
     /*

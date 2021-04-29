@@ -162,8 +162,8 @@ public class FileReaderNodeModel extends NodeModel {
      * {@inheritDoc}
      */
     @Override
-    protected DataTableSpec[] configure(final DataTableSpec[] inSpecs) throws InvalidSettingsException {
-        assert inSpecs.length == 0;
+    protected PortObjectSpec[] configure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
+//        assert inSpecs.length == 0;
 
         m_frSettings.getInputFileChooserModel().configureInModel(inSpecs, m_statusConsumer);
         m_statusConsumer.setWarningsIfRequired(this::setWarningMessage);
@@ -179,7 +179,9 @@ public class FileReaderNodeModel extends NodeModel {
         }
 
         throw new InvalidSettingsException(status.getAllErrorMessages(0));
+
     }
+
 
     /**
      * {@inheritDoc}
