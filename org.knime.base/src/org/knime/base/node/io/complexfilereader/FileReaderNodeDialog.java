@@ -61,7 +61,6 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
-import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -78,7 +77,6 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JSpinner;
@@ -96,18 +94,17 @@ import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataColumnSpecCreator;
 import org.knime.core.data.DataTableSpec;
 import org.knime.core.data.def.StringCell;
+import org.knime.core.node.FlowVariableModel;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeDialogPane;
 import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.NotConfigurableException;
+import org.knime.core.node.context.ports.PortsConfiguration;
 import org.knime.core.node.tableview.TableRowHeaderView;
 import org.knime.core.node.tableview.TableView;
-import org.knime.core.node.util.FilesHistoryPanel;
-import org.knime.core.node.util.FilesHistoryPanel.LocationValidation;
 import org.knime.core.node.util.ViewUtils;
-import org.knime.core.node.workflow.FlowVariable;
 import org.knime.core.node.workflow.NodeProgressEvent;
 import org.knime.core.node.workflow.NodeProgressListener;
 import org.knime.core.util.FileReaderFileFilter;
@@ -119,6 +116,8 @@ import org.knime.core.util.tokenizer.Delimiter;
 import org.knime.core.util.tokenizer.SettingsStatus;
 import org.knime.core.util.tokenizer.TokenizerException;
 import org.knime.core.util.tokenizer.TokenizerSettings;
+import org.knime.filehandling.core.data.location.variable.FSLocationVariableType;
+import org.knime.filehandling.core.defaultnodesettings.filechooser.reader.DialogComponentReaderFileChooser;
 
 /**
  *
@@ -153,7 +152,9 @@ class FileReaderNodeDialog extends NodeDialogPane {
      */
     private FileReaderNodeSettings m_frSettings;
 
-    private FilesHistoryPanel m_filePanel;
+    private DialogComponentReaderFileChooser m_filePanel;
+
+    private static final String FILE_HISTORY_ID = "unzip_files_history";
 
     private TableView m_previewTableView;
 
@@ -239,9 +240,9 @@ class FileReaderNodeDialog extends NodeDialogPane {
     /**
      * Creates a new file reader dialog pane.
      */
-    FileReaderNodeDialog() {
+    FileReaderNodeDialog(final PortsConfiguration portsConfig) {
         super();
-        m_frSettings = new FileReaderNodeSettings();
+        m_frSettings = new FileReaderNodeSettings(portsConfig);
         m_insideLoadDelim = false;
         m_insideDelimChange = false;
         m_insideLoadComment = false;
@@ -280,15 +281,16 @@ class FileReaderNodeDialog extends NodeDialogPane {
 
         JButton rescan = new JButton("Rescan");
 
-        m_filePanel =
-            new FilesHistoryPanel(createFlowVariableModel(FileReaderSettings.CFGKEY_DATAURL, FlowVariable.Type.STRING),
-                FileReaderNodeModel.FILEREADER_HISTORY_ID, LocationValidation.FileInput, "");
+        final FlowVariableModel readFvm = createFlowVariableModel(
+            m_frSettings.getInputFileChooserModel().getKeysForFSLocation(), FSLocationVariableType.INSTANCE);
+        m_filePanel = new DialogComponentReaderFileChooser(m_frSettings.getInputFileChooserModel(),
+            FILE_HISTORY_ID, readFvm);
 
         m_filePanel.setToolTipText("Enter an URL of an ASCII datafile, select from recent files, or browse");
 
 
         fileBox.add(Box.createHorizontalGlue());
-        fileBox.add(m_filePanel);
+        fileBox.add(m_filePanel.getComponentPanel());
         fileBox.add(Box.createVerticalStrut(50));
         fileBox.add(Box.createHorizontalGlue());
 
@@ -312,14 +314,14 @@ class FileReaderNodeDialog extends NodeDialogPane {
 
         /* install action listeners */
         // set stuff to update preview when file location changes
-        m_filePanel.addChangeListener(new ChangeListener() {
-
-            @Override
-            public void stateChanged(final ChangeEvent e) {
-            	setPreviewTable(null);
-                fileLocationChanged();
-            }
-        });
+//        m_filePanel.addChangeListener(new ChangeListener() {
+//
+//            @Override
+//            public void stateChanged(final ChangeEvent e) {
+//            	setPreviewTable(null);
+////                fileLocationChanged();
+//            }
+//        });
 
         rescan.addActionListener(new ActionListener() {
 
@@ -338,32 +340,32 @@ class FileReaderNodeDialog extends NodeDialogPane {
      * Stores the new location in the settings object, sets default settings,
      * and starts analysis if needed.
      */
-    private void fileLocationChanged() {
-
-        boolean fileChanged = false;
-
-        try {
-            fileChanged = takeOverNewFileLocation();
-
-            if (fileChanged) {
-                if (!m_preserveSettings.isSelected() && !m_filePanel.isVariableReplacementEnabled()) {
-                    resetSettings();
-                }
-
-                analyzeDataFileAndUpdatePreview(fileChanged);
-            }
-
-        } catch (final InvalidSettingsException e) {
-            // clear the URL in the settings
-            m_frSettings.setDataFileLocationAndUpdateTableName(null);
-
-            setErrorLabelText("Malformed URL '" + m_filePanel.getSelectedFile() + "'.");
-            setPreviewTable(null);
-
-            // also "analyze" an invalid file (hides "analyze" buttons)
-            analyzeDataFileAndUpdatePreview(fileChanged);
-        }
-    }
+//    private void fileLocationChanged() {
+//
+//        boolean fileChanged = false;
+//
+//        try {
+////            fileChanged = takeOverNewFileLocation();
+//
+//            if (fileChanged) {
+//                if (!m_preserveSettings.isSelected() && !m_filePanel.isVariableReplacementEnabled()) {
+//                    resetSettings();
+//                }
+//
+//                analyzeDataFileAndUpdatePreview(fileChanged);
+//            }
+//
+//        } catch (final InvalidSettingsException e) {
+//            // clear the URL in the settings
+////            m_frSettings.setDataFileLocationAndUpdateTableName(null);
+//
+//            setErrorLabelText("Malformed URL '" + m_filePanel.getSelectedFile() + "'.");
+//            setPreviewTable(null);
+//
+//            // also "analyze" an invalid file (hides "analyze" buttons)
+//            analyzeDataFileAndUpdatePreview(fileChanged);
+//        }
+//    }
 
     /*
      * The preview area contains either the preview panel or the analysis panel
@@ -588,7 +590,7 @@ class FileReaderNodeDialog extends NodeDialogPane {
         advanced.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(final ActionEvent e) {
-                advancedSettings();
+//                advancedSettings();
             }
         });
         m_hasRowHeaders.addItemListener(new ItemListener() {
@@ -1127,16 +1129,16 @@ class FileReaderNodeDialog extends NodeDialogPane {
             final DataTableSpec[] specs) {
         assert (settings != null && specs != null);
 
-        m_filePanel.setSelectedFile("");
+//        m_filePanel.setSelectedFile("");
 
-        try {
-            // this will fail if the settings are invalid (which will be the
-            // case when they come from an uninitialized model). We create
-            // an empty settings object in the catch block.
-            m_frSettings = new FileReaderNodeSettings(settings);
-        } catch (InvalidSettingsException ice) {
-            m_frSettings = new FileReaderNodeSettings();
-        }
+//        try {
+//            // this will fail if the settings are invalid (which will be the
+//            // case when they come from an uninitialized model). We create
+//            // an empty settings object in the catch block.
+//            m_frSettings = new FileReaderNodeSettings(settings);
+//        } catch (InvalidSettingsException ice) {
+////            m_frSettings = new FileReaderNodeSettings();
+//        }
 
         /*
          * This allows for setting a file location in the settings object
@@ -1144,32 +1146,32 @@ class FileReaderNodeDialog extends NodeDialogPane {
          * editor, only the source is set and the dialog opens. We must preserve
          * the source then.
          */
-        try {
-            URL dataFileLocation =
-                    new URL(
-                            settings.getString(FileReaderSettings.CFGKEY_DATAURL));
-            m_frSettings
-                    .setDataFileLocationAndUpdateTableName(dataFileLocation);
-        } catch (MalformedURLException mfue) {
-            // don't set the data location if it bombs
-        } catch (InvalidSettingsException ice) {
-            // don't set the data location if it bombs
-        }
+//        try {
+//            URL dataFileLocation =
+//                    new URL(
+//                            settings.getString(FileReaderSettings.CFGKEY_DATAURL));
+//            m_frSettings
+//                    .setDataFileLocationAndUpdateTableName(dataFileLocation);
+//        } catch (MalformedURLException mfue) {
+//            // don't set the data location if it bombs
+//        } catch (InvalidSettingsException ice) {
+//            // don't set the data location if it bombs
+//        }
 
         // transfer settings from the structure in the dialog's components
-        if ((m_frSettings.getDataFileLocation() != null)
-                && (m_frSettings.getColumnProperties() != null)
-                && (m_frSettings.getColumnProperties().size() > 0)) {
-            // do not analyze file if we got settings to use
-            m_filePanel.setSelectedFile(m_frSettings.getDataFileLocation()
-                    .toString());
-
-            loadSettings(false);
-        } else {
-            // load settings and analyze file
-            loadSettings(true);
-        }
-        // after loading settings we can clear the analyze warning
+//        if ((m_frSettings.getDataFileLocation() != null)
+//                && (m_frSettings.getColumnProperties() != null)
+//                && (m_frSettings.getColumnProperties().size() > 0)) {
+//            // do not analyze file if we got settings to use
+//            m_filePanel.setSelectedFile(m_frSettings.getDataFileLocation()
+//                    .toString());
+//
+//            loadSettings(false);
+//        } else {
+//            // load settings and analyze file
+//            loadSettings(true);
+//        }
+//         after loading settings we can clear the analyze warning
         setAnalWarningText("");
         m_preserveSettings.setSelected(false); // clear this flag when the dialog opens
         updatePreview();
@@ -1186,7 +1188,7 @@ class FileReaderNodeDialog extends NodeDialogPane {
          * TODO: We need to synchronize the NodeSettings object
          */
         // make sure the filename entered gets committed
-        fileLocationChanged();
+//        fileLocationChanged();
 
         // make sure the delimiter is committed in case user entered a new one
         // and didn't hit enter - starts an analysis if things changed
@@ -1197,9 +1199,9 @@ class FileReaderNodeDialog extends NodeDialogPane {
             synchronized (m_analysisRunning) {
                 // start analysis only, if it is not already running
                 if (!m_analysisRunning.booleanValue()) {
-                    if("".equals(m_filePanel.getSelectedFile())) {
-                        throw new InvalidSettingsException("No file specified");
-                    }
+//                    if("".equals(m_filePanel.getSelectedFile())) {
+//                        throw new InvalidSettingsException("No file specified");
+//                    }
                     // the analysis thread should override the error label
                     setErrorLabelText("Waiting for file analysis to finish..."
                             + "Click \"Quick Scan\" to cut it short.");
@@ -1208,7 +1210,7 @@ class FileReaderNodeDialog extends NodeDialogPane {
             }
         }
 
-        FileReaderNodeSettings settingsToSave;
+        FileReaderNodeSettings settingsToSave = new FileReaderNodeSettings(m_frSettings);
 
         // don't close dialog if analysis is running
         synchronized (m_analysisRunning) {
@@ -1239,18 +1241,18 @@ class FileReaderNodeDialog extends NodeDialogPane {
         saveSettings(settingsToSave);
 
         // file existence is not checked during model#loadSettings. Do it here.
-        Reader reader = null;
-        try {
-            reader = settingsToSave.createNewInputReader();
-        } catch (IOException ioe) {
-            throw new InvalidSettingsException("I/O Error while accessing '"
-                    + settingsToSave.getDataFileLocation().toString() + "'.");
-        }
-        try {
-            reader.close();
-        } catch (IOException ioe) {
-            // then don't close it.
-        }
+//        Reader reader = null;
+//        try {
+//            reader = settingsToSave.createNewInputReader();
+//        } catch (IOException ioe) {
+//            throw new InvalidSettingsException("I/O Error while accessing '"
+//                    + settingsToSave.getDataFileLocation().toString() + "'.");
+//        }
+//        try {
+//            reader.close();
+//        } catch (IOException ioe) {
+//            // then don't close it.
+//        }
 
         settingsToSave.saveToConfiguration(settings);
 
@@ -1277,28 +1279,28 @@ class FileReaderNodeDialog extends NodeDialogPane {
      * if the entered location (string) is different from the one previously
      * set.
      */
-    private boolean takeOverNewFileLocation() throws InvalidSettingsException {
-
-        URL newURL;
-
-        try {
-            newURL = FileUtil.toURL(m_filePanel.getSelectedFile());
-        } catch (Exception e) {
-            m_frSettings.setDataFileLocationAndUpdateTableName(null);
-            throw new InvalidSettingsException("Invalid URL entered.");
-        }
-
-        URL oldUrl = m_frSettings.getDataFileLocation();
-        String oldString = "";
-        if (oldUrl != null) {
-            oldString = oldUrl.toString();
-        }
-
-        m_frSettings.setDataFileLocationAndUpdateTableName(newURL);
-
-        return !oldString.equals(newURL.toString());
-
-    }
+//    private boolean takeOverNewFileLocation() throws InvalidSettingsException {
+//
+//        URL newURL;
+//
+//        try {
+//            newURL = FileUtil.toURL(m_filePanel.getSelectedFile());
+//        } catch (Exception e) {
+//            m_frSettings.setDataFileLocationAndUpdateTableName(null);
+//            throw new InvalidSettingsException("Invalid URL entered.");
+//        }
+//
+//        URL oldUrl = m_frSettings.getDataFileLocation();
+//        String oldString = "";
+//        if (oldUrl != null) {
+//            oldString = oldUrl.toString();
+//        }
+//
+//        m_frSettings.setDataFileLocationAndUpdateTableName(newURL);
+//
+//        return !oldString.equals(newURL.toString());
+//
+//    }
 
     /**
      * Updates the preview table, if a new and valid URL was specified in the
@@ -1317,8 +1319,8 @@ class FileReaderNodeDialog extends NodeDialogPane {
      *
      */
     protected void analyzeDataFileAndUpdatePreview(final boolean forceAnalyze) {
-
-        if (forceAnalyze && (m_frSettings.getDataFileLocation() != null)) {
+//&&(m_frSettings.getDataFileLocation() != null)
+        if (forceAnalyze) {
 
             // errors are from previous runs
             setErrorLabelText("");
@@ -1611,12 +1613,12 @@ class FileReaderNodeDialog extends NodeDialogPane {
         setErrorLabelText("");
 
         // update preview
-        if (m_frSettings.getDataFileLocation() == null) {
-            // if there is no data file specified display empty table
-            setPreviewTable(null);
-            showPreviewTable();
-            return;
-        }
+//        if (m_frSettings.getDataFileLocation() == null) {
+//            // if there is no data file specified display empty table
+//            setPreviewTable(null);
+//            showPreviewTable();
+//            return;
+//        }
         FileReaderNodeSettings previewSettings =
                 createPreviewSettings(m_frSettings);
         SettingsStatus status = previewSettings.getStatusOfSettings(true, null);
@@ -1755,13 +1757,13 @@ class FileReaderNodeDialog extends NodeDialogPane {
      * settings object. Loads the new settings into the dialog components.
      */
     private void resetSettings() {
-        FileReaderNodeSettings newSettings = new FileReaderNodeSettings();
-        newSettings.setDataFileLocationAndUpdateTableName(m_frSettings
-                .getDataFileLocation());
-        m_frSettings = newSettings;
-        m_firstColProp = null;
-        // don't load location - don't trigger analysis
-        loadSettings(false);
+//        FileReaderNodeSettings newSettings = new FileReaderNodeSettings();
+//        newSettings.setDataFileLocationAndUpdateTableName(m_frSettings
+//                .getDataFileLocation());
+//        m_frSettings = newSettings;
+//        m_firstColProp = null;
+//        // don't load location - don't trigger analysis
+//        loadSettings(false);
     }
 
     /*
@@ -1773,14 +1775,14 @@ class FileReaderNodeDialog extends NodeDialogPane {
 
         assert m_frSettings != null;
 
-        if (loadFileLocation) {
-            if (m_frSettings.getDataFileLocation() != null) {
-                m_filePanel.setSelectedFile(m_frSettings.getDataFileLocation().toString());
-            } else {
-                m_filePanel.setSelectedFile("");
-            }
-            analyzeDataFileAndUpdatePreview(true);
-        }
+//        if (loadFileLocation) {
+//            if (m_frSettings.getDataFileLocation() != null) {
+//                m_filePanel.setSelectedFile(m_frSettings.getDataFileLocation().toString());
+//            } else {
+//                m_filePanel.setSelectedFile("");
+//            }
+//            analyzeDataFileAndUpdatePreview(true);
+//        }
         loadRowHdrSettings();
         loadColHdrSettings();
         // dis/enable the select recent files button
@@ -1798,13 +1800,13 @@ class FileReaderNodeDialog extends NodeDialogPane {
      */
     private void saveSettings(final FileReaderNodeSettings settings)
             throws InvalidSettingsException {
-        try {
-            URL dataURL = FileUtil.toURL(m_filePanel.getSelectedFile());
-            settings.setDataFileLocationAndUpdateTableName(dataURL);
-        } catch (MalformedURLException mfue) {
-//            throw new InvalidSettingsException("Invalid (malformed) URL for "
-//                    + "the data file location.", mfue);
-        }
+//        try {
+//            URL dataURL = FileUtil.toURL(m_filePanel.getSelectedFile());
+//            settings.setDataFileLocationAndUpdateTableName(dataURL);
+//        } catch (MalformedURLException mfue) {
+////            throw new InvalidSettingsException("Invalid (malformed) URL for "
+////                    + "the data file location.", mfue);
+//        }
     }
 
     /*
@@ -1886,7 +1888,7 @@ class FileReaderNodeDialog extends NodeDialogPane {
         if (advDlg.closedViaReadXML()) {
             // stop a possibly running analysis
             interruptAnalysis();
-            readXMLSettings();
+//            readXMLSettings();
             analyzeDataFileAndUpdatePreview(false); // don't reanalyze
         } else if (advDlg.closedViaOk()) {
             // stop a possibly running analysis
@@ -1902,37 +1904,37 @@ class FileReaderNodeDialog extends NodeDialogPane {
      * Pops up a file chooser dialog and reads the settings fromt the selected
      * xml file.
      */
-    protected void readXMLSettings() {
-        String xmlPath =
-                popupFileChooser(m_filePanel.getSelectedFile(),
-                        true);
-
-        if (xmlPath == null) {
-            // user canceled.
-            return;
-        }
-
-        FileReaderNodeSettings newFrns;
-
-        try {
-
-            newFrns = FileReaderNodeSettings.readSettingsFromXMLFile(xmlPath);
-
-        } catch (IllegalStateException ise) {
-            JOptionPane.showConfirmDialog(m_dialogPanel, ise.getMessage(),
-                    "Attention: Settings not read!",
-                    JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        m_frSettings = newFrns;
-        loadSettings(false); // don't trigger file analysis
-        m_filePanel.setSelectedFile(m_frSettings.getDataFileLocation().toString());
-
-        // clear analyze warning after loading settings from XML file
-        setAnalWarningText("");
-        updatePreview();
-    }
+//    protected void readXMLSettings() {
+//        String xmlPath =
+//                popupFileChooser(m_filePanel.getSelectedFile(),
+//                        true);
+//
+//        if (xmlPath == null) {
+//            // user canceled.
+//            return;
+//        }
+//
+//        FileReaderNodeSettings newFrns;
+//
+//        try {
+//
+//            newFrns = FileReaderNodeSettings.readSettingsFromXMLFile(xmlPath);
+//
+//        } catch (IllegalStateException ise) {
+//            JOptionPane.showConfirmDialog(m_dialogPanel, ise.getMessage(),
+//                    "Attention: Settings not read!",
+//                    JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE);
+//            return;
+//        }
+//
+//        m_frSettings = newFrns;
+//        loadSettings(false); // don't trigger file analysis
+//        m_filePanel.setSelectedFile(m_frSettings.getDataFileLocation().toString());
+//
+//        // clear analyze warning after loading settings from XML file
+//        setAnalWarningText("");
+//        updatePreview();
+//    }
 
     /**
      * Pops up the file selection dialog and returns the path to the selected
