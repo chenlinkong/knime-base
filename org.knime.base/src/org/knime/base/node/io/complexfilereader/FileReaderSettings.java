@@ -47,12 +47,10 @@
  */
 package org.knime.base.node.io.complexfilereader;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -87,10 +85,6 @@ public class FileReaderSettings extends TokenizerSettings {
     /** The node logger for this class. */
     private static final NodeLogger LOGGER =
             NodeLogger.getLogger(FileReaderSettings.class);
-
-    /* the list of settings that are stored in here. */
-
-    private URL m_dataFileLocation;
 
     /*
      * in tokens read for a double column, this char gets replaced with a "."
@@ -227,7 +221,6 @@ public class FileReaderSettings extends TokenizerSettings {
      * settings.
      */
     public FileReaderSettings() {
-
         init();
     }
 
@@ -239,7 +232,6 @@ public class FileReaderSettings extends TokenizerSettings {
      */
     public FileReaderSettings(final FileReaderSettings clonee) {
         super(clonee);
-        m_dataFileLocation = clonee.m_dataFileLocation;
 
         m_decimalSeparator = clonee.m_decimalSeparator;
         m_thousandsSeparator = clonee.m_thousandsSeparator;
@@ -267,8 +259,6 @@ public class FileReaderSettings extends TokenizerSettings {
 
     // initializes private members. Needs to be called from two constructors.
     private void init() {
-        m_dataFileLocation = null;
-
         m_decimalSeparator = '.';
 
         m_thousandsSeparator = '\0';
@@ -312,19 +302,19 @@ public class FileReaderSettings extends TokenizerSettings {
         super(cfg);
         init();
         if (cfg != null) {
-            try {
-                URL dataFileLocation = new URL(cfg.getString(CFGKEY_DATAURL));
-                setDataFileLocationAndUpdateTableName(dataFileLocation);
-            } catch (MalformedURLException mfue) {
-                throw new IllegalArgumentException(
-                        "Cannot create URL of data file" + " from '"
-                                + cfg.getString(CFGKEY_DATAURL)
-                                + "' in filereader config", mfue);
-            } catch (InvalidSettingsException ice) {
-                throw new InvalidSettingsException("Illegal config object for "
-                        + "file reader settings! Key '" + CFGKEY_DATAURL
-                        + "' missing!", ice);
-            }
+//            try {
+//                URL dataFileLocation = new URL(cfg.getString(CFGKEY_DATAURL));
+//                setDataFileLocationAndUpdateTableName(dataFileLocation);
+//            } catch (MalformedURLException mfue) {
+//                throw new IllegalArgumentException(
+//                        "Cannot create URL of data file" + " from '"
+//                                + cfg.getString(CFGKEY_DATAURL)
+//                                + "' in filereader config", mfue);
+//            } catch (InvalidSettingsException ice) {
+//                throw new InvalidSettingsException("Illegal config object for "
+//                        + "file reader settings! Key '" + CFGKEY_DATAURL
+//                        + "' missing!", ice);
+//            }
             try {
                 m_fileHasColumnHeaders = cfg.getBoolean(CFGKEY_HASCOL);
             } catch (InvalidSettingsException ice) {
@@ -452,10 +442,6 @@ public class FileReaderSettings extends TokenizerSettings {
         if (cfg == null) {
             throw new NullPointerException("Can't save 'file "
                     + "reader settings' to null config!");
-        }
-
-        if (m_dataFileLocation != null) {
-            cfg.addString(CFGKEY_DATAURL, m_dataFileLocation.toString());
         }
 
         super.saveToConfiguration(cfg);
@@ -657,23 +643,6 @@ public class FileReaderSettings extends TokenizerSettings {
     }
 
     /**
-     * Sets the location of the file to read data from. Won't check correctness.
-     *
-     * @param dataFileLocation the URL of the data file these settings are for
-     */
-    public void setDataFileLocationAndUpdateTableName(
-            final URL dataFileLocation) {
-        m_dataFileLocation = dataFileLocation;
-    }
-
-    /**
-     * @return the location of the file these settings are meant for
-     */
-    public URL getDataFileLocation() {
-        return m_dataFileLocation;
-    }
-
-    /**
      * Set the new character set name that will be used the next time a new
      * input reader is created (see {@link #createNewInputReader()}).
      *
@@ -709,19 +678,30 @@ public class FileReaderSettings extends TokenizerSettings {
      * @throws NullPointerException if the data location is not set
      * @throws IOException if an IO Error occurred when opening the stream
      */
-    public BufferedFileReader createNewInputReader() throws IOException {
-        return BufferedFileReader.createNewReader(getDataFileLocation(),
-                getCharsetName(), (int) m_connectTimeout.toMillis());
-    }
+//    public BufferedFileReader createNewInputReader() throws IOException {
+//        return BufferedFileReader.createNewReader(getDataFileLocation(),
+//                getCharsetName(), (int) m_connectTimeout.toMillis());
+//    }
 
     /**
-     * @return the currently set name of the table created by this node. Valid
-     *         names are not <code>null</code>, but the method could return
-     *         null, if no name was set yet.
+     * @return a new reader to read from the data file location. It will create
+     *         a buffered reader, and for zipped sources a GZIP one.
+     *         If the data location is not set an exception will fly.
+     * @throws NullPointerException if the data location is not set
+     * @throws IOException if an IO Error occurred when opening the stream
      */
-    public String getTableName() {
-        return getPureFileNameWithExtension(m_dataFileLocation);
+    public BufferedFileReader createNewInputReader(final Path path) throws IOException {
+        return BufferedFileReader.createNewReader(path,
+                getCharsetName(), (int) m_connectTimeout.toMillis());
     }
+//    /**
+//     * @return the currently set name of the table created by this node. Valid
+//     *         names are not <code>null</code>, but the method could return
+//     *         null, if no name was set yet.
+//     */
+//    public String getTableName() {
+//        return getPureFileNameWithExtension(m_dataFileLocation);
+//    }
 
     /**
      * @param loc the location to extract the filename from.
@@ -1247,7 +1227,7 @@ public class FileReaderSettings extends TokenizerSettings {
 
         SettingsStatus status = new SettingsStatus();
 
-        addStatusOfSettings(status, openDataFile, tableSpec);
+//        addStatusOfSettings(status, openDataFile, tableSpec);
 
         return status;
     }
@@ -1271,111 +1251,111 @@ public class FileReaderSettings extends TokenizerSettings {
      *            ones that are possible without the knowledge of the structure
      *            of the table
      */
-    protected void addStatusOfSettings(final SettingsStatus status,
-            final boolean openDataFile, final DataTableSpec tableSpec) {
-
-        // check the data file location. It's required.
-        if (m_dataFileLocation == null) {
-            status.addError("No data file location specified.");
-        } else {
-            // see if we can access the data file - if permitted.
-            if (openDataFile) {
-                BufferedReader reader = null;
-                try {
-                    reader = createNewInputReader();
-                } catch (FileNotFoundException fnfe) {
-                    status.addError(fnfe.getMessage());
-                } catch (IOException ioe) {
-                    LOGGER.debug(ioe.getMessage(), ioe);
-                    status.addError(ioe.getMessage());
-                }
-                if (reader != null) {
-                    try {
-                        reader.close();
-                    } catch (IOException ioe) {
-                        // then don't close it.
-                    }
-                }
-            }
-        }
-
-        // check the row headers.
-        if (!m_fileHasRowHeaders) {
-            // we tell them when we would use the default row header.
-            if (m_rowHeaderPrefix == null) {
-                status.addInfo("The default row ID ('" + DEF_ROWPREFIX
-                        + "+RowIdx') will be used as no row ID prefix"
-                        + " is specified and the file doesn't contain row"
-                        + " IDs.");
-            }
-        } else {
-            if (m_rowHeaderPrefix != null) {
-                status.addInfo("The specified row ID will be used"
-                        + " overriding the ones in the data file.");
-            }
-        }
-
-        // check the row delimiters
-        for (String rowDelim : m_rowDelimiters) {
-            Delimiter delim = getDelimiterPattern(rowDelim);
-            if (delim == null) {
-                status.addError("Row delimiter '" + rowDelim
-                        + " is not defined" + "being a token delimiter.");
-                continue;
-            }
-            if (delim.includeInToken()) {
-                status.addError("Row delimiter '" + rowDelim + "' is set to"
-                        + " be included in the token.");
-            }
-            if (!delim.returnAsToken()) {
-                status
-                        .addError("Row delimiter '" + rowDelim
-                                + "' is not set to"
-                                + " be returned as separate token.");
-            }
-        }
-        if (m_rowDelimiters.size() == 0) {
-            status.addWarning("No row delimiters are defined! The table will"
-                    + " be read into one row (and supernumerous cells will"
-                    + " be ignored).");
-        }
-
-        // check missing patterns
-        if (tableSpec != null) {
-            int numCols = tableSpec.getNumColumns();
-            if (numCols > m_missingPatterns.size()) {
-                status.addInfo("Not all columns have patterns for missing"
-                        + "values assigned.");
-            } else if (numCols < m_missingPatterns.size()) {
-                status.addError("There are more patterns for missing values"
-                        + " defined than columns in the table.");
-            } else {
-                for (Iterator<String> pIter = m_missingPatterns.iterator();
-                        pIter.hasNext();) {
-                    if (pIter.next() == null) {
-                        status.addInfo("Not all columns have patterns for "
-                                + "missing values assigned.");
-                    }
-                    // adding the message once is enough
-                    break;
-                }
-            }
-        } else {
-            for (Iterator<String> pIter = m_missingPatterns.iterator(); pIter
-                    .hasNext();) {
-                if (pIter.next() == null) {
-                    status.addInfo("Not all columns have patterns for missing"
-                            + " values assigned.");
-                }
-                // adding the message once is enough
-                break;
-            }
-        }
-
-        // let the filetokenizer add its blurb
-        super.addStatusOfSettings(status);
-
-    }
+//    protected void addStatusOfSettings(final SettingsStatus status,
+//            final boolean openDataFile, final DataTableSpec tableSpec) {
+//
+//        // check the data file location. It's required.
+//        if (m_dataFileLocation == null) {
+//            status.addError("No data file location specified.");
+//        } else {
+//            // see if we can access the data file - if permitted.
+//            if (openDataFile) {
+//                BufferedReader reader = null;
+//                try {
+//                    reader = createNewInputReader();
+//                } catch (FileNotFoundException fnfe) {
+//                    status.addError(fnfe.getMessage());
+//                } catch (IOException ioe) {
+//                    LOGGER.debug(ioe.getMessage(), ioe);
+//                    status.addError(ioe.getMessage());
+//                }
+//                if (reader != null) {
+//                    try {
+//                        reader.close();
+//                    } catch (IOException ioe) {
+//                        // then don't close it.
+//                    }
+//                }
+//            }
+//        }
+//
+//        // check the row headers.
+//        if (!m_fileHasRowHeaders) {
+//            // we tell them when we would use the default row header.
+//            if (m_rowHeaderPrefix == null) {
+//                status.addInfo("The default row ID ('" + DEF_ROWPREFIX
+//                        + "+RowIdx') will be used as no row ID prefix"
+//                        + " is specified and the file doesn't contain row"
+//                        + " IDs.");
+//            }
+//        } else {
+//            if (m_rowHeaderPrefix != null) {
+//                status.addInfo("The specified row ID will be used"
+//                        + " overriding the ones in the data file.");
+//            }
+//        }
+//
+//        // check the row delimiters
+//        for (String rowDelim : m_rowDelimiters) {
+//            Delimiter delim = getDelimiterPattern(rowDelim);
+//            if (delim == null) {
+//                status.addError("Row delimiter '" + rowDelim
+//                        + " is not defined" + "being a token delimiter.");
+//                continue;
+//            }
+//            if (delim.includeInToken()) {
+//                status.addError("Row delimiter '" + rowDelim + "' is set to"
+//                        + " be included in the token.");
+//            }
+//            if (!delim.returnAsToken()) {
+//                status
+//                        .addError("Row delimiter '" + rowDelim
+//                                + "' is not set to"
+//                                + " be returned as separate token.");
+//            }
+//        }
+//        if (m_rowDelimiters.size() == 0) {
+//            status.addWarning("No row delimiters are defined! The table will"
+//                    + " be read into one row (and supernumerous cells will"
+//                    + " be ignored).");
+//        }
+//
+//        // check missing patterns
+//        if (tableSpec != null) {
+//            int numCols = tableSpec.getNumColumns();
+//            if (numCols > m_missingPatterns.size()) {
+//                status.addInfo("Not all columns have patterns for missing"
+//                        + "values assigned.");
+//            } else if (numCols < m_missingPatterns.size()) {
+//                status.addError("There are more patterns for missing values"
+//                        + " defined than columns in the table.");
+//            } else {
+//                for (Iterator<String> pIter = m_missingPatterns.iterator();
+//                        pIter.hasNext();) {
+//                    if (pIter.next() == null) {
+//                        status.addInfo("Not all columns have patterns for "
+//                                + "missing values assigned.");
+//                    }
+//                    // adding the message once is enough
+//                    break;
+//                }
+//            }
+//        } else {
+//            for (Iterator<String> pIter = m_missingPatterns.iterator(); pIter
+//                    .hasNext();) {
+//                if (pIter.next() == null) {
+//                    status.addInfo("Not all columns have patterns for missing"
+//                            + " values assigned.");
+//                }
+//                // adding the message once is enough
+//                break;
+//            }
+//        }
+//
+//        // let the filetokenizer add its blurb
+//        super.addStatusOfSettings(status);
+//
+//    }
 
     /**
      * {@inheritDoc}
@@ -1384,11 +1364,11 @@ public class FileReaderSettings extends TokenizerSettings {
     public String toString() {
         StringBuffer res = new StringBuffer(super.toString());
         res.append("\nReading from:'");
-        if (m_dataFileLocation == null) {
-            res.append("<null>");
-        } else {
-            res.append(m_dataFileLocation.toString());
-        }
+//        if (m_dataFileLocation == null) {
+//            res.append("<null>");
+//        } else {
+//            res.append(m_dataFileLocation.toString());
+//        }
         res.append("'\n");
         if (m_decimalSeparator != '.') {
             res.append("Decimal separator char for doubles: '");
