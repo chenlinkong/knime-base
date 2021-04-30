@@ -160,7 +160,7 @@ public abstract class GenericAbstractTableReaderNodeFactory<I, C extends ReaderS
      *
      * @return the default production path provider
      */
-    protected final DefaultProductionPathProvider<T> createProductionPathProvider() {
+    protected DefaultProductionPathProvider<T> createProductionPathProvider() {
         final ReadAdapterFactory<T, V> readAdapterFactory = getReadAdapterFactory();
         return new DefaultProductionPathProvider<>(readAdapterFactory.getProducerRegistry(),
             readAdapterFactory::getDefaultType);
