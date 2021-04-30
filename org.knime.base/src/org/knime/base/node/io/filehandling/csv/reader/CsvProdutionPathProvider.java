@@ -48,31 +48,115 @@
  */
 package org.knime.base.node.io.filehandling.csv.reader;
 
-import java.util.List;
+import static java.util.stream.Collectors.toList;
 
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.knime.core.data.DataType;
+import org.knime.core.data.convert.datacell.JavaToDataCellConverterFactory;
+import org.knime.core.data.convert.datacell.SecureJavaToDataCellConverterRegistry;
+import org.knime.core.data.convert.map.CellValueProducerFactory;
 import org.knime.core.data.convert.map.ProducerRegistry;
 import org.knime.core.data.convert.map.ProductionPath;
+import org.knime.core.data.convert.map.Source;
+import org.knime.core.node.util.CheckUtils;
 import org.knime.filehandling.core.node.table.reader.ProductionPathProvider;
+import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
 
 /**
  * A {@link ProductionPathProvider} that only provides a fixed set of {@link ProductionPath ProductionPaths}.
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-final class CsvProdutionPathProvider implements ProductionPathProvider<Class<?>> {
+final class CsvProdutionPathProvider<T> implements ProductionPathProvider<T> {
 
-    private final ProducerRegistry<Class<?>, ?> m_producerRegistry;
+    private final ProducerRegistry<T, ?> m_producerRegistry;
 
-    @Override
-    public ProductionPath getDefaultProductionPath(final Class<?> externalType) {
-        // TODO Auto-generated method stub
-        return null;
+    private final TreeTypeHierarchy<T, T> m_typeHierarchy;
+
+    private final Function<T, DataType> m_defaultTypeProvider;
+
+    CsvProdutionPathProvider(final ProducerRegistry<T, ?> producerRegistry, final TreeTypeHierarchy<T, T> typeHiearchy,
+        final Function<T, DataType> defaultTypeProvider) {
+        m_producerRegistry = producerRegistry;
+        m_typeHierarchy = typeHiearchy;
+        m_defaultTypeProvider = defaultTypeProvider;
     }
 
     @Override
-    public List<ProductionPath> getAvailableProductionPaths(final Class<?> externalType) {
-        // TODO Auto-generated method stub
-        return null;
+    public ProductionPath getDefaultProductionPath(final T externalType) {
+        final DataType knimeType = m_defaultTypeProvider.apply(externalType);
+        final CellValueProducerFactory<?, T, ?, ?> producerFactory =
+            getProducerFactory(externalType, m_producerRegistry);
+        final JavaToDataCellConverterFactory<?> converterFactory =
+            getConverterFactory(producerFactory.getDestinationType(), knimeType);
+        return new ProductionPath(producerFactory, converterFactory);
+    }
+
+    private static <J> JavaToDataCellConverterFactory<J> getConverterFactory(final Class<J> javaClass,
+        final DataType destinationType) {
+        return getConverterFactories(javaClass)//
+            .filter(f -> destinationType.equals(f.getDestinationType()))//
+            .findFirst()//
+            .orElseThrow(() -> new IllegalStateException(
+                "There exists not JavaToDataCellConverter for the intermediate type: " + javaClass));
+    }
+
+    private static <J> Stream<JavaToDataCellConverterFactory<J>> getConverterFactories(final Class<J> javaClass) {
+        final List<JavaToDataCellConverterFactory<J>> factories =
+            SecureJavaToDataCellConverterRegistry.INSTANCE.getConverterFactoriesBySourceType(javaClass);
+        return factories.stream();
+    }
+
+    private <S extends Source<T>> CellValueProducerFactory<S, T, ?, ?> getProducerFactory(final T externalType,
+        final ProducerRegistry<T, S> registry) {
+        Collection<CellValueProducerFactory<S, T, ?, ?>> producerFactories =
+            registry.getFactoriesForSourceType(externalType);
+        CheckUtils.checkState(!producerFactories.isEmpty(),
+            "Coding error: No producer factory registered for external type '%s'.", externalType);
+        CheckUtils.checkState(producerFactories.size() == 1,
+            "Coding error: More than one producer factory registered for external type '%s'.", externalType);
+        return producerFactories.iterator().next();
+    }
+
+    @Override
+    public List<ProductionPath> getAvailableProductionPaths(final T externalType) {
+        final Map<DataType, ProductionPath> coveredTypes = new HashMap<>();
+        m_typeHierarchy.walkUpToRoot(externalType, t -> {
+            final ProductionPath defaultPath = getDefaultProductionPath(t.getType());
+            coveredTypes.put(defaultPath.getDestinationType(), defaultPath);
+        });
+        addUncoveredRootPaths(coveredTypes);
+        final Comparator<ProductionPath> comparator =
+            Comparator.<ProductionPath, String> comparing(p -> p.getDestinationType().getName());
+        return coveredTypes.values().stream()//
+            .sorted(comparator).collect(Collectors.toList());
+    }
+
+    private void addUncoveredRootPaths(final Map<DataType, ProductionPath> coveredTypes) {
+        final T rootType = m_typeHierarchy.getRootNode().getType();
+        final List<ProductionPath> rootProdPaths = getPathsFor(rootType);
+        for (ProductionPath path : rootProdPaths) {
+            final DataType knimeType = path.getDestinationType();
+            if (!coveredTypes.containsKey(knimeType)) {
+                coveredTypes.put(knimeType, path);
+            }
+        }
+    }
+
+    private List<ProductionPath> getPathsFor(final T externalType) {
+        final CellValueProducerFactory<?, T, ?, ?> producerFactory =
+            getProducerFactory(externalType, m_producerRegistry);
+        return getConverterFactories(producerFactory.getDestinationType())//
+            .map(f -> new ProductionPath(producerFactory, f))//
+            .collect(toList());
     }
 
 }

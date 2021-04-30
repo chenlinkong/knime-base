@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.knime.core.node.util.CheckUtils;
@@ -104,6 +105,14 @@ public final class TreeTypeHierarchy<T, V> implements TypeFocusableTypeHierarchy
         // by definition the root corresponds to the most generic value
         // hence if it doesn't accept value, then no other node does
         return m_root.test(value);
+    }
+
+    public void walkUpToRoot(final V startValue, final Consumer<TreeNode<T, V>> visitor) {
+        final TreeWalker<T, V> walker = initializeWalker(startValue);
+        visitor.accept(walker.getCurrent());
+        while (!walker.reachedTop()) {
+            visitor.accept(walker.advanceOneNode());
+        }
     }
 
     /**
@@ -196,7 +205,7 @@ public final class TreeTypeHierarchy<T, V> implements TypeFocusableTypeHierarchy
                 return;
             }
             if (m_walker == null) {
-                m_walker = initializeIterator(value);
+                m_walker = initializeWalker(value);
             } else {
                 m_walker.advanceUntilMatch(value);
             }
@@ -215,17 +224,18 @@ public final class TreeTypeHierarchy<T, V> implements TypeFocusableTypeHierarchy
             return m_walker != null;
         }
 
-        private TreeWalker<T, V> initializeIterator(final V value) {
-            // for each leaf we have to search its path to root and
-            // the deepest node we find that matches is our entry point
-            return m_leaves.stream()//
+
+    }
+
+    private TreeWalker<T, V> initializeWalker(final V value) {
+        // for each leaf we have to search its path to root and
+        // the deepest node we find that matches is our entry point
+        return m_leaves.stream()//
                 .map(TreeWalker::new)//
                 .map(w -> w.advanceUntilMatch(value))//
                 .max((l, r) -> Integer.compare(l.getCurrent().getDepth(), r.getCurrent().getDepth()))//
                 .orElseThrow(() -> new IllegalStateException(String.format("No match found for %s. This is"
-                    + " illegal because the top most type in a hierarchy must match everything.", value)));
-        }
-
+                        + " illegal because the top most type in a hierarchy must match everything.", value)));
     }
 
     /**

@@ -74,7 +74,6 @@ import org.knime.filehandling.core.node.table.reader.read.ReadUtils;
 import org.knime.filehandling.core.node.table.reader.spec.TableSpecGuesser;
 import org.knime.filehandling.core.node.table.reader.spec.TypedReaderTableSpec;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeFocusableTypeHierarchy;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeTester;
 import org.knime.filehandling.core.util.BomEncodingUtils;
@@ -96,7 +95,7 @@ public final class CSVTableReader implements TableReader<CSVTableReaderConfig, C
     /**
      * {@link TreeTypeHierarchy} that defines the hierarchy of data types while reading from csv files
      */
-    public static final TypeFocusableTypeHierarchy<Class<?>, String> TYPE_HIERARCHY =
+    public static final TreeTypeHierarchy<Class<?>, String> TYPE_HIERARCHY =
         TreeTypeHierarchy.builder(createTypeTester(String.class, t -> {
         })).addType(String.class, createTypeTester(Double.class, Double::parseDouble))
             .addType(Double.class, createTypeTester(Long.class, Long::parseLong))
