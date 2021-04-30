@@ -297,7 +297,7 @@ public class FileReaderNodeModel extends NodeModel {
 
         if (!validateOnly) {
 //            // everything looks good - take over the new settings.
-//            m_frSettings = newSettings;
+            m_frSettings = newSettings;
 //            // save the filename to our filehistory
 //            StringHistory h = StringHistory.getInstance(FILEREADER_HISTORY_ID);
 //            h.add(m_frSettings.getDataFileLocation().toString());
@@ -318,6 +318,7 @@ public class FileReaderNodeModel extends NodeModel {
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
         readSettingsFromConfiguration(settings, /* validateOnly = */false);
+        m_frSettings.loadSettingsForModel(settings);
     }
 
     /**

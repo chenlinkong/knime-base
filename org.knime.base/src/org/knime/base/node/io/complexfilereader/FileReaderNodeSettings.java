@@ -134,6 +134,18 @@ public class FileReaderNodeSettings extends FileReaderSettings {
         m_inputFileChooserModel = model;
     }
 
+    void validateSettingsForModel(final NodeSettingsRO settings) throws InvalidSettingsException {
+        m_inputFileChooserModel.validateSettings(settings);
+    }
+
+    void loadSettingsForModel(final NodeSettingsRO settings) throws InvalidSettingsException {
+        m_inputFileChooserModel.loadSettingsFrom(settings);
+    }
+
+    void saveSettingsForModel(final NodeSettingsWO settings) {
+        m_inputFileChooserModel.saveSettingsTo(settings);
+    }
+
 
 
   //TODO new stuff above
