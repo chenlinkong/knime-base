@@ -64,6 +64,7 @@ import org.knime.filehandling.core.connections.knimerelativeto.LocalRelativeToWo
 import org.knime.filehandling.core.connections.knimerelativeto.LocalRelativeToWorkflowFSConnection;
 import org.knime.filehandling.core.connections.knimeremote.KNIMERemoteFSConnection;
 import org.knime.filehandling.core.connections.local.LocalFSConnection;
+import org.knime.filehandling.core.connections.local.LocalFSConnectionConfig;
 import org.knime.filehandling.core.connections.url.URIFSConnection;
 import org.knime.filehandling.core.defaultnodesettings.KNIMEConnection.Type;
 import org.knime.filehandling.core.util.CheckNodeContextUtil;
@@ -94,7 +95,7 @@ public final class FileSystemHelper {
         final FileSystemChoice choice = settings.getFileSystemChoice();
         switch (choice.getType()) {
             case LOCAL_FS:
-                return new LocalFSConnection();
+                return new LocalFSConnection(new LocalFSConnectionConfig());
             case CUSTOM_URL_FS:
                 final URI uri = URI.create(settings.getPathOrURL().replace(" ", "%20"));
                 return new URIFSConnection(uri, timeoutInMillis);
@@ -139,7 +140,7 @@ public final class FileSystemHelper {
                 checkMountpointCanCreateConnection(location, connection);
                 return Optional.of(new KNIMERemoteFSConnection(connection, false));
             case LOCAL:
-                return Optional.of(new LocalFSConnection());
+                return Optional.of(new LocalFSConnection(new LocalFSConnectionConfig()));
             default:
                 throw new IllegalArgumentException("Unknown file system choice: " + category);
 
