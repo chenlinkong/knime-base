@@ -42,44 +42,33 @@
  *  may freely choose the license terms applicable to such Node, including
  *  when such Node is propagated with or for interoperation with KNIME.
  * ---------------------------------------------------------------------
+ *
+ * History
+ *   May 2, 2021 (bjoern): created
  */
 package org.knime.filehandling.core.connections.knimeremote;
 
-import static org.junit.Assert.assertEquals;
+import org.knime.filehandling.core.connections.meta.base.BaseFSConnectionConfig;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
+/**
+ *
+ * @author Bjoern Lohrmann, KNIME GmbH
+ */
+public final class KNIMERemoteFSConnectionConfig extends BaseFSConnectionConfig {
 
-import org.junit.Before;
-import org.junit.Test;
+    private final String m_mountpoint;
 
-public class KNIMERemotePathTest {
-
-    private KNIMERemoteFileSystemProvider m_fsProvider;
-
-    private KNIMERemoteFileSystem m_fs;
-
-    @Before
-    public void setup() {
-        m_fsProvider = new KNIMERemoteFileSystemProvider();
-        m_fs = new KNIMERemoteFileSystem(new KNIMERemoteFSConnectionConfig("LOCAL"));
+    public KNIMERemoteFSConnectionConfig(final String mountpoint) {
+        super(KNIMERemoteFileSystem.SEPARATOR, false);
+        m_mountpoint = mountpoint;
     }
 
-    @Test
-    public void get_url_when_hash_sign_in_path() throws URISyntaxException, MalformedURLException {
-        get_url_from_path("/somepathwith#hashsign");
+    KNIMERemoteFSConnectionConfig(final String workingDirectory, final String mountpoint) {
+        super(workingDirectory, true);
+        m_mountpoint = mountpoint;
     }
 
-    @Test
-    public void get_url_when_hash_signs_in_path() throws URISyntaxException, MalformedURLException {
-        get_url_from_path("/some#path#with#hash#signs");
+    String getMountpoint() {
+        return m_mountpoint;
     }
-
-    private void get_url_from_path(final String path) throws URISyntaxException, MalformedURLException {
-        final KNIMERemotePath knimePath = new KNIMERemotePath(m_fs, path);
-        final URI uri = knimePath.toKNIMEProtocolURI();
-        assertEquals(path, uri.getPath());
-    }
-
 }

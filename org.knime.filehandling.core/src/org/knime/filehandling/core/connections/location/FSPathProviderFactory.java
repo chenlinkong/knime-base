@@ -57,6 +57,7 @@ import org.knime.filehandling.core.connections.FSLocation;
 import org.knime.filehandling.core.connections.FSLocationSpec;
 import org.knime.filehandling.core.connections.FSPath;
 import org.knime.filehandling.core.connections.knimeremote.KNIMERemoteFSConnection;
+import org.knime.filehandling.core.connections.knimeremote.KNIMERemoteFSConnectionConfig;
 import org.knime.filehandling.core.connections.local.LocalFSConnection;
 import org.knime.filehandling.core.connections.local.LocalFSConnectionConfig;
 import org.knime.filehandling.core.defaultnodesettings.FileSystemHelper;
@@ -148,8 +149,8 @@ public abstract class FSPathProviderFactory implements AutoCloseable {
                 "Invalid FSLocation for 'Mountpoint'. It must specify the name of the mountpoint.");
         }
 
-        final KNIMEConnection con = KNIMEConnection.getOrCreateMountpointAbsoluteConnection(specifier.get());
-        return new KNIMERemoteFSConnection(con, false);
+        final KNIMERemoteFSConnectionConfig conf = new KNIMERemoteFSConnectionConfig(specifier.get());
+        return new KNIMERemoteFSConnection(conf);
     }
 
     private static FSConnection createRelativeToFSConnection(final FSLocationSpec fsLocationSpec) {

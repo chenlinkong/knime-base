@@ -42,44 +42,30 @@
  *  may freely choose the license terms applicable to such Node, including
  *  when such Node is propagated with or for interoperation with KNIME.
  * ---------------------------------------------------------------------
+ *
+ * History
+ *   Apr 30, 2021 (bjoern): created
  */
 package org.knime.filehandling.core.connections.knimeremote;
 
-import static org.junit.Assert.assertEquals;
+import org.knime.filehandling.core.connections.meta.FSType;
+import org.knime.filehandling.core.connections.meta.base.BaseFSDescriptor;
+import org.knime.filehandling.core.connections.meta.base.BaseFSDescriptorProvider;
+import org.knime.filehandling.core.connections.uriexport.URIExporterIDs;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-
-import org.junit.Before;
-import org.junit.Test;
-
-public class KNIMERemotePathTest {
-
-    private KNIMERemoteFileSystemProvider m_fsProvider;
-
-    private KNIMERemoteFileSystem m_fs;
-
-    @Before
-    public void setup() {
-        m_fsProvider = new KNIMERemoteFileSystemProvider();
-        m_fs = new KNIMERemoteFileSystem(new KNIMERemoteFSConnectionConfig("LOCAL"));
+/**
+ *
+ * @author Bjoern Lohrmann, KNIME GmbH
+ */
+public class KNIMERemoteFSDescriptorProvider extends BaseFSDescriptorProvider {
+    public KNIMERemoteFSDescriptorProvider() {
+        super(FSType.MOUNTPOINT, //
+            new BaseFSDescriptor.Builder() //
+                .withSeparator(KNIMERemoteFileSystem.SEPARATOR) //
+                .withConnectionFactory(KNIMERemoteFSConnection::new) //
+                .withIsWorkflowAware(true) //
+                .withURIExporterFactory(URIExporterIDs.DEFAULT, LegacyKNIMEUrlExporterFactory.getInstance()) //
+                .withURIExporterFactory(URIExporterIDs.LEGACY_KNIME_URL, LegacyKNIMEUrlExporterFactory.getInstance()) //
+                .build());
     }
-
-    @Test
-    public void get_url_when_hash_sign_in_path() throws URISyntaxException, MalformedURLException {
-        get_url_from_path("/somepathwith#hashsign");
-    }
-
-    @Test
-    public void get_url_when_hash_signs_in_path() throws URISyntaxException, MalformedURLException {
-        get_url_from_path("/some#path#with#hash#signs");
-    }
-
-    private void get_url_from_path(final String path) throws URISyntaxException, MalformedURLException {
-        final KNIMERemotePath knimePath = new KNIMERemotePath(m_fs, path);
-        final URI uri = knimePath.toKNIMEProtocolURI();
-        assertEquals(path, uri.getPath());
-    }
-
 }
