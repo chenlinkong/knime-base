@@ -75,7 +75,7 @@ import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHier
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
  */
-final class CsvProdutionPathProvider<T> implements ProductionPathProvider<T> {
+final class SecureProdutionPathProvider<T> implements ProductionPathProvider<T> {
 
     private final ProducerRegistry<T, ?> m_producerRegistry;
 
@@ -83,8 +83,8 @@ final class CsvProdutionPathProvider<T> implements ProductionPathProvider<T> {
 
     private final Function<T, DataType> m_defaultTypeProvider;
 
-    CsvProdutionPathProvider(final ProducerRegistry<T, ?> producerRegistry, final TreeTypeHierarchy<T, T> typeHiearchy,
-        final Function<T, DataType> defaultTypeProvider) {
+    SecureProdutionPathProvider(final ProducerRegistry<T, ?> producerRegistry,
+        final TreeTypeHierarchy<T, T> typeHiearchy, final Function<T, DataType> defaultTypeProvider) {
         m_producerRegistry = producerRegistry;
         m_typeHierarchy = typeHiearchy;
         m_defaultTypeProvider = defaultTypeProvider;

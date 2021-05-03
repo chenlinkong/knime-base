@@ -80,8 +80,8 @@ public abstract class AbstractCSVTableReaderNodeFactory
     }
 
     @Override
-    protected CsvProdutionPathProvider<Class<?>> createProductionPathProvider() {
-        return new CsvProdutionPathProvider<>(StringReadAdapterFactory.INSTANCE.getProducerRegistry(), TYPE_HIERARCHY,
+    protected SecureProdutionPathProvider<Class<?>> createProductionPathProvider() {
+        return new SecureProdutionPathProvider<>(StringReadAdapterFactory.INSTANCE.getProducerRegistry(), TYPE_HIERARCHY,
             StringReadAdapterFactory.INSTANCE::getDefaultType);
     }
 
