@@ -84,9 +84,9 @@ final class SecureProdutionPathProvider<T> implements ProductionPathProvider<T> 
     private final Function<T, DataType> m_defaultTypeProvider;
 
     SecureProdutionPathProvider(final ProducerRegistry<T, ?> producerRegistry,
-        final TreeTypeHierarchy<T, T> typeHiearchy, final Function<T, DataType> defaultTypeProvider) {
+        final TreeTypeHierarchy<T, T> typeHierarchy, final Function<T, DataType> defaultTypeProvider) {
         m_producerRegistry = producerRegistry;
-        m_typeHierarchy = typeHiearchy;
+        m_typeHierarchy = typeHierarchy;
         m_defaultTypeProvider = defaultTypeProvider;
     }
 
@@ -112,7 +112,7 @@ final class SecureProdutionPathProvider<T> implements ProductionPathProvider<T> 
     private static <J> Stream<JavaToDataCellConverterFactory<J>> getConverterFactories(final Class<J> javaClass) {
         final List<JavaToDataCellConverterFactory<J>> factories =
             SecureJavaToDataCellConverterRegistry.INSTANCE.getConverterFactoriesBySourceType(javaClass);
-        return factories.stream();
+        return factories.stream().sequential();
     }
 
     private <S extends Source<T>> CellValueProducerFactory<S, T, ?, ?> getProducerFactory(final T externalType,
@@ -133,16 +133,16 @@ final class SecureProdutionPathProvider<T> implements ProductionPathProvider<T> 
             final ProductionPath defaultPath = getDefaultProductionPath(t.getType());
             coveredTypes.put(defaultPath.getDestinationType(), defaultPath);
         });
-        addUncoveredRootPaths(coveredTypes);
+        // TODO prevent paths from root to DataTypes where a default path exists
+        addUncoveredPaths(coveredTypes, m_typeHierarchy.getRootNode().getType());
         final Comparator<ProductionPath> comparator =
             Comparator.<ProductionPath, String> comparing(p -> p.getDestinationType().getName());
         return coveredTypes.values().stream()//
             .sorted(comparator).collect(Collectors.toList());
     }
 
-    private void addUncoveredRootPaths(final Map<DataType, ProductionPath> coveredTypes) {
-        final T rootType = m_typeHierarchy.getRootNode().getType();
-        final List<ProductionPath> rootProdPaths = getPathsFor(rootType);
+    private void addUncoveredPaths(final Map<DataType, ProductionPath> coveredTypes, final T externalType) {
+        final List<ProductionPath> rootProdPaths = getPathsFor(externalType);
         for (ProductionPath path : rootProdPaths) {
             final DataType knimeType = path.getDestinationType();
             if (!coveredTypes.containsKey(knimeType)) {
