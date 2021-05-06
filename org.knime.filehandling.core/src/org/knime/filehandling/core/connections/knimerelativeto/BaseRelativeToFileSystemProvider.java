@@ -65,6 +65,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 import org.knime.core.node.workflow.WorkflowPersistor;
+import org.knime.filehandling.core.connections.WorkflowAwareUtils;
 import org.knime.filehandling.core.connections.base.BaseFileSystemProvider;
 import org.knime.filehandling.core.connections.base.attributes.BaseFileAttributes;
 
@@ -79,6 +80,7 @@ import org.knime.filehandling.core.connections.base.attributes.BaseFileAttribute
 public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToFileSystem>
     extends BaseFileSystemProvider<RelativeToPath, F> {
 
+    @SuppressWarnings("resource") // the file system has to stay open for further use
     private Path toRealPathWithAccessibilityCheck(final RelativeToPath path) throws IOException {
         return getFileSystemInternal().toRealPathWithAccessibilityCheck(path);
     }
@@ -112,13 +114,14 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
 
     @Override
     protected Iterator<RelativeToPath> createPathIterator(final RelativeToPath path, final Filter<? super Path> filter) throws IOException {
-        if (getFileSystemInternal().isPartOfWorkflow(path)) {
+        if (isPartOfWorkflow(path)) {
             throw new IOException(path.toString()  + " points to/into a workflow. Cannot list folder contents in a workflow");
         }
 
         return new RelativeToPathIterator(path, toRealPathWithAccessibilityCheck(path), filter);
     }
 
+    @SuppressWarnings("resource") // the file system has to stay open for further use
     @Override
     protected boolean exists(final RelativeToPath path) throws IOException {
         return getFileSystemInternal().existsWithAccessibilityCheck(path);
@@ -126,7 +129,7 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
 
     @Override
     protected void deleteInternal(final RelativeToPath path) throws IOException {
-        if (getFileSystemInternal().isPartOfWorkflow(path)) {
+        if (isPartOfWorkflow(path)) {
             throw new IOException(path.toString()  + " points to/into a workflow. Cannot delete data from a workflow");
         }
 
@@ -137,7 +140,7 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
     protected SeekableByteChannel newByteChannelInternal(final RelativeToPath path,
         final Set<? extends OpenOption> options, final FileAttribute<?>... attrs) throws IOException {
 
-        if (getFileSystemInternal().isPartOfWorkflow(path)) {
+        if (isPartOfWorkflow(path)) {
             throw new IOException(path.toString()  + " points to/into a workflow. Workflows cannot be opened for reading/writing");
         }
 
@@ -148,7 +151,7 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
     protected void createDirectoryInternal(final RelativeToPath dir, final FileAttribute<?>... attrs)
         throws IOException {
 
-        if (getFileSystemInternal().isPartOfWorkflow(dir)) {
+        if (isPartOfWorkflow(dir)) {
             throw new IOException(dir.toString()  + " points to/into a workflow. Cannot create a directory there.");
         }
 
@@ -159,11 +162,11 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
     protected void copyInternal(final RelativeToPath source, final RelativeToPath target,
         final CopyOption... options) throws IOException {
 
-        if (getFileSystemInternal().isPartOfWorkflow(source)) {
+        if (isPartOfWorkflow(source)) {
             throw new IOException(source.toString()  + " points to/into a workflow. Cannot copy files from workflows.");
         }
 
-        if (getFileSystemInternal().isPartOfWorkflow(target)) {
+        if (isPartOfWorkflow(target)) {
             throw new IOException(source.toString()  + " points to/into a workflow. Cannot copy files to workflows.");
         }
 
@@ -174,11 +177,11 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
     protected void moveInternal(final RelativeToPath source, final RelativeToPath target,
         final CopyOption... options) throws IOException {
 
-        if (getFileSystemInternal().isPartOfWorkflow(source)) {
+        if (isPartOfWorkflow(source)) {
             throw new IOException(source.toString()  + " points to/into a workflow. Cannot move files from workflows.");
         }
 
-        if (getFileSystemInternal().isPartOfWorkflow(target)) {
+        if (isPartOfWorkflow(target)) {
             throw new IOException(source.toString()  + " points to/into a workflow. Cannot move files to workflows.");
         }
 
