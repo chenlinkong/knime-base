@@ -85,8 +85,10 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
 
     @Override
     protected InputStream newInputStreamInternal(final RelativeToPath path, final OpenOption... options) throws IOException {
-        if (getFileSystemInternal().isPartOfWorkflow(path)) {
-            throw new IOException(path.toString()  + " points to/into a workflow. Cannot read data from a workflow.");
+        if (isWorkflow(path)) {
+            throw WorkflowAwareUtils.createReadingKnimeObjectException(path.toString());
+        } else if (isPartOfWorkflow(path)) {
+            throw WorkflowAwareUtils.createAccessInsideWorkflowException(path.toString());
         }
 
         return Files.newInputStream(toRealPathWithAccessibilityCheck(path), options);
@@ -99,8 +101,10 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
 
     @Override
     protected OutputStream newOutputStreamInternal(final RelativeToPath path, final OpenOption... options) throws IOException {
-        if (getFileSystemInternal().isPartOfWorkflow(path)) {
-            throw new IOException(path.toString()  + " points to/into a workflow. Cannot write data to a workflow");
+        if (isWorkflow(path)) {
+            throw WorkflowAwareUtils.createWritingKnimeObjectException(path.toString());
+        } else if (isPartOfWorkflow(path)) {
+            throw WorkflowAwareUtils.createAccessInsideWorkflowException(path.toString());
         }
 
         return Files.newOutputStream(toRealPathWithAccessibilityCheck(path), options);
@@ -195,8 +199,14 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
         }
     }
 
+    @SuppressWarnings("resource")// the file system has to stay open for further use
     @Override
     protected void checkAccessInternal(final RelativeToPath path, final AccessMode... modes) throws IOException {
+        if (isWorkflow(path) && modes != null && modes.length > 0) {
+            throw WorkflowAwareUtils.createAccessKnimeObjectException(path.toString(), modes);
+        } else if (isPartOfWorkflow(path)) {
+            throw WorkflowAwareUtils.createAccessInsideWorkflowException(path.toString());
+        }
         final Path realPath = toRealPathWithAccessibilityCheck(path);
         realPath.getFileSystem().provider().checkAccess(realPath);
     }
