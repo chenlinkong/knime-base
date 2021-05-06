@@ -205,6 +205,7 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
     @SuppressWarnings("resource")// the file system has to stay open for further use
     @Override
     protected void checkAccessInternal(final RelativeToPath path, final AccessMode... modes) throws IOException {
+        // TODO this change affects the behavior of Files.isReadable/Writable/Executable -> Affects the dialog which will now print "Unable to access"
         if (isWorkflow(path) && modes != null && modes.length > 0) {
             throw WorkflowAwareUtils.createAccessKnimeObjectException(path.toString(), modes);
         } else if (isPartOfWorkflow(path)) {
