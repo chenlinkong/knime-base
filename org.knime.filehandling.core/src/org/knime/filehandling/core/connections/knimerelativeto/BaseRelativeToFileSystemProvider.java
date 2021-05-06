@@ -92,6 +92,11 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
         return Files.newInputStream(toRealPathWithAccessibilityCheck(path), options);
     }
 
+    @SuppressWarnings("resource")// the file system has to stay open for further use
+    private boolean isPartOfWorkflow(final RelativeToPath path) throws IOException {
+        return getFileSystemInternal().isPartOfWorkflow(path);
+    }
+
     @Override
     protected OutputStream newOutputStreamInternal(final RelativeToPath path, final OpenOption... options) throws IOException {
         if (getFileSystemInternal().isPartOfWorkflow(path)) {
@@ -196,28 +201,35 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
         realPath.getFileSystem().provider().checkAccess(realPath);
     }
 
+    @SuppressWarnings("resource")// the file system has to stay open for further use
+    private boolean isWorkflow(final RelativeToPath path) throws IOException {
+        return getFileSystemInternal().isWorkflowDirectory(path);
+    }
+
     @Override
     protected BaseFileAttributes fetchAttributesInternal(final RelativeToPath path, final Class<?> type) throws IOException {
-        if (getFileSystemInternal().isPartOfWorkflow(path) && !getFileSystemInternal().isWorkflowDirectory(path)) {
-            throw new IOException(path.toString()  + " points into a workflow. Cannot access what is inside a workflow.");
+        final boolean isWorkflow = isWorkflow(path);
+        if (isPartOfWorkflow(path) && !isWorkflow) {
+            throw WorkflowAwareUtils.createAccessInsideWorkflowException(path.toString());
         }
 
         if (type == BasicFileAttributes.class) {
             final Path realPath = toRealPathWithAccessibilityCheck(path);
 
-            final boolean isRegularFile = getFileSystemInternal().isRegularFile(path);
-
             final BasicFileAttributes localAttributes =
                 Files.readAttributes(realPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 
-            return new BaseFileAttributes(isRegularFile, //
+            // AP-15972: Workflows are non-regular files
+            final boolean isOther = isWorkflow || localAttributes.isOther();
+
+            return new BaseFileAttributes(localAttributes.isRegularFile(), //
                 path, //
                 localAttributes.lastModifiedTime(), //
                 localAttributes.lastAccessTime(), //
                 localAttributes.creationTime(), //
                 localAttributes.size(), //
                 localAttributes.isSymbolicLink(), //
-                localAttributes.isOther(), //
+                isOther,
                 null);
         }
 

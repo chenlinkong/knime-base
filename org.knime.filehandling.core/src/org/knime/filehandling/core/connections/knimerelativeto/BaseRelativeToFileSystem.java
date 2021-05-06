@@ -262,6 +262,7 @@ public abstract class BaseRelativeToFileSystem extends BaseFileSystem<RelativeTo
      * @return {@code true} if path is a normal file or a workflow directory
      * @throws IOException
      */
+    // TODO remove? It's only used in tests
     protected abstract boolean isRegularFile(final RelativeToPath path) throws IOException;
 
     /**
