@@ -69,8 +69,7 @@ import org.knime.core.data.convert.map.ProducerRegistry;
 import org.knime.core.data.convert.map.ProductionPath;
 import org.knime.core.data.convert.map.Source;
 import org.knime.core.node.util.CheckUtils;
-import org.knime.filehandling.core.node.table.reader.ProductionPathProvider;
-import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
+import org.knime.filehandling.core.node.table.reader.type.hierarchy.TraversableTypeHierarchy;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
 
 /**
@@ -92,7 +91,7 @@ public final class HierarchyAwareProdutionPathProvider<T> implements ProductionP
 
     private final ProducerRegistry<T, ?> m_producerRegistry;
 
-    private final TreeTypeHierarchy<T, T> m_typeHierarchy;
+    private final TraversableTypeHierarchy<T> m_typeHierarchy;
 
     private final Function<T, DataType> m_defaultTypeProvider;
 
@@ -107,7 +106,7 @@ public final class HierarchyAwareProdutionPathProvider<T> implements ProductionP
      * @param pathBouncer allows to blacklist certain (non-default) {@link ProductionPath ProductionPaths}
      */
     public HierarchyAwareProdutionPathProvider(final ProducerRegistry<T, ?> producerRegistry,
-        final TreeTypeHierarchy<T, T> typeHierarchy, final Function<T, DataType> defaultTypeProvider,
+        final TraversableTypeHierarchy<T> typeHierarchy, final Function<T, DataType> defaultTypeProvider,
         final BiPredicate<T, ProductionPath> pathBouncer) {
         m_producerRegistry = producerRegistry;
         m_typeHierarchy = typeHierarchy;
@@ -154,11 +153,11 @@ public final class HierarchyAwareProdutionPathProvider<T> implements ProductionP
     @Override
     public List<ProductionPath> getAvailableProductionPaths(final T externalType) {
         final Map<DataType, ProductionPath> coveredTypes = new HashMap<>();
-        m_typeHierarchy.walkUpToRoot(externalType, t -> {
-            final ProductionPath defaultPath = getDefaultProductionPath(t.getType());
+        m_typeHierarchy.traverseToRoot(externalType, t -> {
+            final ProductionPath defaultPath = getDefaultProductionPath(t);
             coveredTypes.put(defaultPath.getDestinationType(), defaultPath);
         });
-        addUncoveredPaths(coveredTypes, m_typeHierarchy.getRootNode().getType());
+        addUncoveredPaths(coveredTypes, externalType);
         final Comparator<ProductionPath> comparator =
             Comparator.<ProductionPath, String> comparing(p -> p.getDestinationType().getName());
         return coveredTypes.values().stream()//
