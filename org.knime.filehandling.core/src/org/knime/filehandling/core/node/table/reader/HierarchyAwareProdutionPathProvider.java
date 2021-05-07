@@ -46,7 +46,7 @@
  * History
  *   Apr 29, 2021 (Adrian Nembach, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.base.node.io.filehandling.csv.reader;
+package org.knime.filehandling.core.node.table.reader;
 
 import static java.util.stream.Collectors.toList;
 
@@ -55,7 +55,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -69,13 +71,24 @@ import org.knime.core.data.convert.map.Source;
 import org.knime.core.node.util.CheckUtils;
 import org.knime.filehandling.core.node.table.reader.ProductionPathProvider;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
+import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
 
 /**
- * A {@link ProductionPathProvider} that only provides a fixed set of {@link ProductionPath ProductionPaths}.
+ * This {@link ProductionPathProvider} uses the {@link TypeHierarchy} of the current node to find the available
+ * {@link ProductionPath ProductionPaths} for any external type.<br>
+ * The algorithm works as follows:
+ * <ol>
+ * <li>Start at the external type and add its {@link #getDefaultProductionPath(Object) default path} to the available
+ * paths
+ * <li>Climb up the hierarchy and add the default paths of the super-types
+ * <li>Add any path of the current/root type (TODO decide/test) that ends in a DataType that is not yet covered by any
+ * other path and isn't blacklisted by a reader-dependent {@code pathBouncer}
+ * </ol>
  *
  * @author Adrian Nembach, KNIME GmbH, Konstanz, Germany
+ * @param <T> the type used to identify external data types
  */
-final class SecureProdutionPathProvider<T> implements ProductionPathProvider<T> {
+public final class HierarchyAwareProdutionPathProvider<T> implements ProductionPathProvider<T> {
 
     private final ProducerRegistry<T, ?> m_producerRegistry;
 
@@ -83,11 +96,23 @@ final class SecureProdutionPathProvider<T> implements ProductionPathProvider<T> 
 
     private final Function<T, DataType> m_defaultTypeProvider;
 
-    SecureProdutionPathProvider(final ProducerRegistry<T, ?> producerRegistry,
-        final TreeTypeHierarchy<T, T> typeHierarchy, final Function<T, DataType> defaultTypeProvider) {
+    private final BiPredicate<T, ProductionPath> m_pathTester;
+
+    /**
+     * Constructor.
+     *
+     * @param producerRegistry provides the {@link CellValueProducerFactory CellValueProducerFactories}
+     * @param typeHierarchy of the reader node
+     * @param defaultTypeProvider provides the default {@link DataType} for a particular external type
+     * @param pathBouncer allows to blacklist certain (non-default) {@link ProductionPath ProductionPaths}
+     */
+    public HierarchyAwareProdutionPathProvider(final ProducerRegistry<T, ?> producerRegistry,
+        final TreeTypeHierarchy<T, T> typeHierarchy, final Function<T, DataType> defaultTypeProvider,
+        final BiPredicate<T, ProductionPath> pathBouncer) {
         m_producerRegistry = producerRegistry;
         m_typeHierarchy = typeHierarchy;
         m_defaultTypeProvider = defaultTypeProvider;
+        m_pathTester = pathBouncer;
     }
 
     @Override
@@ -133,7 +158,6 @@ final class SecureProdutionPathProvider<T> implements ProductionPathProvider<T> 
             final ProductionPath defaultPath = getDefaultProductionPath(t.getType());
             coveredTypes.put(defaultPath.getDestinationType(), defaultPath);
         });
-        // TODO prevent paths from root to DataTypes where a default path exists
         addUncoveredPaths(coveredTypes, m_typeHierarchy.getRootNode().getType());
         final Comparator<ProductionPath> comparator =
             Comparator.<ProductionPath, String> comparing(p -> p.getDestinationType().getName());
@@ -152,11 +176,17 @@ final class SecureProdutionPathProvider<T> implements ProductionPathProvider<T> 
     }
 
     private List<ProductionPath> getPathsFor(final T externalType) {
+        final Predicate<ProductionPath> pathBouncer = getPathTesterForCurrentType(externalType);
         final CellValueProducerFactory<?, T, ?, ?> producerFactory =
             getProducerFactory(externalType, m_producerRegistry);
         return getConverterFactories(producerFactory.getDestinationType())//
             .map(f -> new ProductionPath(producerFactory, f))//
+            .filter(pathBouncer)//
             .collect(toList());
+    }
+
+    private Predicate<ProductionPath> getPathTesterForCurrentType(final T externalType) {
+        return p -> m_pathTester.test(externalType, p);
     }
 
 }

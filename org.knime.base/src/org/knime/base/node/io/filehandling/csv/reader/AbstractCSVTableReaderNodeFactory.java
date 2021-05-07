@@ -51,8 +51,15 @@ package org.knime.base.node.io.filehandling.csv.reader;
 import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReader;
 import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
 import org.knime.base.node.io.filehandling.csv.reader.api.StringReadAdapterFactory;
+import org.knime.core.data.DataType;
+import org.knime.core.data.convert.map.ProductionPath;
+import org.knime.core.data.def.DoubleCell;
+import org.knime.core.data.def.IntCell;
+import org.knime.core.data.def.LongCell;
 import org.knime.core.node.context.NodeCreationConfiguration;
 import org.knime.filehandling.core.node.table.reader.AbstractTableReaderNodeFactory;
+import org.knime.filehandling.core.node.table.reader.HierarchyAwareProdutionPathProvider;
+import org.knime.filehandling.core.node.table.reader.ProductionPathProvider;
 import org.knime.filehandling.core.node.table.reader.ReadAdapterFactory;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TreeTypeHierarchy;
 import org.knime.filehandling.core.node.table.reader.type.hierarchy.TypeHierarchy;
@@ -80,9 +87,27 @@ public abstract class AbstractCSVTableReaderNodeFactory
     }
 
     @Override
-    protected SecureProdutionPathProvider<Class<?>> createProductionPathProvider() {
-        return new SecureProdutionPathProvider<>(StringReadAdapterFactory.INSTANCE.getProducerRegistry(), TYPE_HIERARCHY,
-            StringReadAdapterFactory.INSTANCE::getDefaultType);
+    protected ProductionPathProvider<Class<?>> createProductionPathProvider() {
+        return new HierarchyAwareProdutionPathProvider<>(StringReadAdapterFactory.INSTANCE.getProducerRegistry(), TYPE_HIERARCHY,
+                StringReadAdapterFactory.INSTANCE::getDefaultType, AbstractCSVTableReaderNodeFactory::isValidPathFor);
+    }
+
+    private static boolean isValidPathFor(final Class<?> type, final ProductionPath path) {
+        if (type == String.class) {
+            final DataType knimeType = path.getDestinationType();
+            // exclude numeric types for String because
+            // a) The default String -> Number converters don't use the user-specified decimal and thousands separators
+            // b) the conversion is likely to fail because otherwise the type of the column would be numeric
+            return !isNumeric(knimeType);
+        } else {
+            return true;
+        }
+    }
+
+    private static boolean isNumeric(final DataType knimeType) {
+        return knimeType.equals(DoubleCell.TYPE)//
+            || knimeType.equals(LongCell.TYPE)//
+            || knimeType.equals(IntCell.TYPE);
     }
 
     @Override
