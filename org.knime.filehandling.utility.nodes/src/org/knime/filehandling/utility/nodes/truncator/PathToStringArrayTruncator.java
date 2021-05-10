@@ -44,30 +44,26 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Sep 3, 2020 (lars.schweikardt): created
+ *   Apr 13, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.utils;
+package org.knime.filehandling.utility.nodes.truncator;
 
 import java.nio.file.Path;
-import java.util.function.Function;
 
 /**
- * A {@link Function} which accepts a {@link Path} and returns a {@link String}. This interface will be used to
- * relativize file {@link Path}s based on another path i.e. a source folder {@link Path}.
+ * A path to string array truncator modifies a given path and returns its components as an String array.
  *
- * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
- * @noreference non-public API
- * @noimplement This interface is not intended to be implemented by clients.
+ * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
 @FunctionalInterface
-public interface PathRelativizer extends Function<Path, String> {
+public interface PathToStringArrayTruncator { //NOSONAR descriptive names are more important
 
     /**
-     * Applies the function to the input {@link Path} and returns a {@link String}.
+     * Creates the truncated path.
      *
-     * @param path input of type {@link Path}
-     * @return a {@link String}
+     * @param path cannot be null and starts with the <b>baseFolder</b>
+     * @return the truncated path as a string
      */
-    @Override
-    public String apply(final Path path);
+    String[] getTruncatedStringArray(final Path path);
+
 }
