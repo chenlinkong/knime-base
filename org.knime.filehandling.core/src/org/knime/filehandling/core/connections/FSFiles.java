@@ -54,6 +54,7 @@ import java.io.OutputStream;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.CopyOption;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
@@ -70,6 +71,7 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -380,6 +382,40 @@ public final class FSFiles {
      */
     public static void sortPathsLexicographically(final List<FSPath> paths) {
         paths.sort((final FSPath p1, final FSPath p2) -> p1.toString().compareTo(p2.toString()));
+    }
+
+    /**
+     * Walks a file tree while following links.
+     *
+     * @param start the starting file
+     * @param visitor the file visitor to invoke for each file
+     * @return the starting file
+     * @throws IllegalArgumentException if the {@code maxDepth} parameter is negative
+     * @throws SecurityException If the security manager denies access to the starting file. In the case of the default
+     *             provider, the {@link SecurityManager#checkRead(String) checkRead} method is invoked to check read
+     *             access to the directory.
+     * @throws IOException if an I/O error is thrown by a visitor method
+     */
+    public static Path walkFileTree(final Path start, final FileVisitor<? super Path> visitor) throws IOException {
+        return walkFileTree(start, Integer.MAX_VALUE, visitor);
+    }
+
+    /**
+     * Walks a file tree up to a certain depth while following links.
+     *
+     * @param start the starting file
+     * @param maxDepth the maximum number of directory levels to visit
+     * @param visitor the file visitor to invoke for each file
+     * @return the starting file
+     * @throws IllegalArgumentException if the {@code maxDepth} parameter is negative
+     * @throws SecurityException If the security manager denies access to the starting file. In the case of the default
+     *             provider, the {@link SecurityManager#checkRead(String) checkRead} method is invoked to check read
+     *             access to the directory.
+     * @throws IOException if an I/O error is thrown by a visitor method
+     */
+    public static Path walkFileTree(final Path start, final int maxDepth, final FileVisitor<? super Path> visitor)
+        throws IOException {
+        return Files.walkFileTree(start, EnumSet.of(FileVisitOption.FOLLOW_LINKS), maxDepth, visitor);
     }
 
     /**
