@@ -45,7 +45,7 @@
  * History
  *   20.11.2010 (meinl): created
  */
-package org.knime.base;
+package org.knime;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.AllTests;

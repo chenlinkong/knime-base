@@ -145,15 +145,8 @@ final class ExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
                 new DialogComponentBoolean(ExtractDateTimeFieldsNodeModel.createFieldBooleanModel(field), field);
         }
 
-        final Locale[] availableLocales = Locale.getAvailableLocales();
-        final String[] availableLocalesString = new String[availableLocales.length];
-        for (int i = 0; i < availableLocales.length; i++) {
-            availableLocalesString[i] = availableLocales[i].toLanguageTag();
-        }
-        Arrays.sort(availableLocalesString);
-
         m_dialogCompLocale = new DialogComponentStringSelection(ExtractDateTimeFieldsNodeModel.createLocaleModel(),
-            "Locale", availableLocalesString);
+            "Locale", getLocales());
 
         // dialog panel:
 
@@ -282,6 +275,16 @@ final class ExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         // add panel to dialog:
 
         addTab("Options", panel);
+    }
+
+    private String[] getLocales() {
+        final Locale[] availableLocales = Locale.getAvailableLocales();
+        final String[] availableLocalesString = new String[availableLocales.length];
+        for (int i = 0; i < availableLocales.length; i++) {
+            availableLocalesString[i] = availableLocales[i].toLanguageTag();
+        }
+        Arrays.sort(availableLocalesString);
+        return availableLocalesString;
     }
 
     /**
