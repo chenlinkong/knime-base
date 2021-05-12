@@ -51,6 +51,7 @@ package org.knime.filehandling.core.connections;
 import java.nio.file.AccessMode;
 import java.nio.file.FileSystemException;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.stream.Collectors;
 
 /**
@@ -67,33 +68,58 @@ public final class WorkflowAwareUtils {
         // static utility class
     }
 
-    /**
-     * Creates a standardized exception for {@link WorkflowAware} file systems telling the user that reading from a path
-     * pointing to a workflow is not supported.
-     *
-     * @param workflowPath path to a workflow or component
-     * @return a {@link FileSystemException} that tells the user that reading workflows is not supported
-     */
-    public static FileSystemException createReadingKnimeObjectException(final String workflowPath) {
-        return createKnimeObjectOperationException(workflowPath, "reading");
+    public enum Entity {
+            WORKFLOW("Workflow", EnumSet.noneOf(Operation.class)),
+            COMPONENT("Component", EnumSet.noneOf(Operation.class)),
+            WORKFLOW_GROUP("Workflow group", EnumSet.noneOf(Operation.class)),
+            METANODE("Meta node", EnumSet.noneOf(Operation.class)),
+            DATA("Data item", EnumSet.allOf(Operation.class));
+
+        private final EnumSet<Operation> m_supportedOperations;
+
+        private final String m_readableString;
+
+        private Entity(final String readableString, final EnumSet<Operation> supportedOperations) {
+            m_supportedOperations = supportedOperations;
+            m_readableString = readableString;
+        }
+
+        boolean supports(final Operation operation) {
+            return m_supportedOperations.contains(operation);
+        }
+
+        public void checkSupport(final String path, final Operation operation) throws FileSystemException {
+            if (!supports(operation)) {
+                final String reason =
+                    String.format("It's not possible to %s on a %s.", operation, this.toString().toLowerCase());
+                throw createSingleFileException(path, reason);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return m_readableString;
+        }
     }
 
-    /**
-     * Creates a standardized exception for {@link WorkflowAware} file sytems telling the user that writing to a path
-     * pointing to a workflow is not supported.
-     *
-     * @param workflowPath path to a workflow or component
-     * @return a {@link FileSystemException} that tells the user that writing a workflow is not supported
-     */
-    public static FileSystemException createWritingKnimeObjectException(final String workflowPath) {
-        return createKnimeObjectOperationException(workflowPath, "writing to");
+    public enum Operation {
+            OPEN_INPUT_STREAM("open an input stream"), OPEN_OUTPUT_STREAM("open an output stream");
+
+        private final String m_readableString;
+
+        private Operation(final String readableString) {
+            m_readableString = readableString;
+        }
+
+        @Override
+        public String toString() {
+            return m_readableString;
+        }
+
     }
 
-    private static FileSystemException createKnimeObjectOperationException(final String workflowPath,
-        final String operation) {
-        final String reason = String
-            .format("Only %s data items is supported (not workflows, components, workflow groups, etc)", operation);
-        return new FileSystemException(workflowPath, null, reason);
+    private static FileSystemException createSingleFileException(final String path, final String reason) {
+        return new FileSystemException(path, null, reason);
     }
 
     /**

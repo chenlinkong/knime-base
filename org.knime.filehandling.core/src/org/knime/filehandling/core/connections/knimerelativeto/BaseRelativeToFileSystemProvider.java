@@ -62,10 +62,13 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.util.Iterator;
+import java.util.Optional;
 import java.util.Set;
 
 import org.knime.core.node.workflow.WorkflowPersistor;
 import org.knime.filehandling.core.connections.WorkflowAwareUtils;
+import org.knime.filehandling.core.connections.WorkflowAwareUtils.Entity;
+import org.knime.filehandling.core.connections.WorkflowAwareUtils.Operation;
 import org.knime.filehandling.core.connections.base.BaseFileSystemProvider;
 import org.knime.filehandling.core.connections.base.attributes.BaseFileAttributes;
 
@@ -87,12 +90,7 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
 
     @Override
     protected InputStream newInputStreamInternal(final RelativeToPath path, final OpenOption... options) throws IOException {
-        if (isWorkflow(path)) {
-            throw WorkflowAwareUtils.createReadingKnimeObjectException(path.toString());
-        } else if (isPartOfWorkflow(path)) {
-            throw WorkflowAwareUtils.createAccessInsideWorkflowException(path.toString());
-        }
-
+        checkSupport(path, Operation.OPEN_INPUT_STREAM);
         return Files.newInputStream(toRealPathWithAccessibilityCheck(path), options);
     }
 
@@ -101,14 +99,27 @@ public abstract class BaseRelativeToFileSystemProvider<F extends BaseRelativeToF
         return getFileSystemInternal().isPartOfWorkflow(path);
     }
 
+    private void checkSupport(final RelativeToPath path, final Operation operation) throws IOException {
+        // TODO helper class that avoids redundant calls? (isPartOfWorkflow, isWorkflow and getEntity have a lot of calls in common)
+        if (isPartOfWorkflow(path) && !isWorkflow(path)) {
+            // no matter what the operation is, it's not allowed to access things within a workflow
+            throw WorkflowAwareUtils.createAccessInsideWorkflowException(path.toString());
+        } else {
+            final Optional<Entity> entity = getEntity(path);
+            if (entity.isPresent()) {
+                entity.get().checkSupport(path.toString(), operation);
+            }
+        }
+    }
+
+    @SuppressWarnings("resource")// the file system has to stay open for further use
+    private Optional<Entity> getEntity(final RelativeToPath path) throws IOException {
+        return getFileSystemInternal().getEntity(path);
+    }
+
     @Override
     protected OutputStream newOutputStreamInternal(final RelativeToPath path, final OpenOption... options) throws IOException {
-        if (isWorkflow(path)) {
-            throw WorkflowAwareUtils.createWritingKnimeObjectException(path.toString());
-        } else if (isPartOfWorkflow(path)) {
-            throw WorkflowAwareUtils.createAccessInsideWorkflowException(path.toString());
-        }
-
+        checkSupport(path, Operation.OPEN_OUTPUT_STREAM);
         return Files.newOutputStream(toRealPathWithAccessibilityCheck(path), options);
     }
 
