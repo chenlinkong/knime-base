@@ -44,73 +44,43 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   May 11, 2021 (ortmann): created
+ *   May 12, 2021 (ortmann): created
  */
 package org.knime.time.node.extract.datetime;
 
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.function.Function;
+
+import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
+import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.defaultnodesettings.SettingsModelString;
 
 /**
  *
  * @author ortmann
  */
-enum LocaleProvider {
+final class ExtractDateTimeFieldsNodeModel2 extends AbstractExtractDateTimeFieldsNodeModel {
 
-        JAVA_8(Arrays.stream(Locale.getAvailableLocales())//
-            // with java 11 new Locales without region are available that need to be filtered plus since we use the
-            // languageTag to save and load the Locales we cannot load Locales that have a variant, e.g., no_NO_NY != no_NO
-            .filter(l -> ExtractDateTimeFieldsNodeModel.LOCALE_MAPPING.containsKey(l.toLanguageTag()) //
-                || (!l.getCountry().isEmpty()//
-                    && l.getVariant().isEmpty()))//
-            .sorted(Comparator.comparing(Locale::toString))//
-            .toArray(Locale[]::new), Locale::toLanguageTag),
-
-        JAVA_11(Arrays.stream(Locale.getAvailableLocales())//
-            .filter(l -> !l.getCountry().isEmpty())//
-            .sorted(Comparator.comparing(Locale::toLanguageTag))//
-            .toArray(Locale[]::new), Locale::toString);
-
-    private final Locale[] m_locales;
-
-    private final Function<Locale, String> m_localeToString;
-
-    private LocaleProvider(final Locale[] locales, final Function<Locale, String> localeToString) {
-        m_locales = locales;
-        m_localeToString = localeToString;
+    @Override
+    Optional<Locale> getLocale(final String selectedLocale) {
+        return LocaleProvider.JAVA_11.stringToLocale(selectedLocale);
     }
 
-    /**
-     * Returns the Locales that can be selected by the user.
-     *
-     * @return the selectable locales
-     */
-    Locale[] getLocales() {
-        return m_locales;
+    @Override
+    void saveLocale(final NodeSettingsWO settings, final SettingsModelString localeModel) {
+        localeModel.saveSettingsTo(settings);
     }
 
-    /**
-     * Converts a locale to the string that is used to save it.
-     *
-     * @param locale the locale to be converted
-     * @return the string representation of this locale
-     */
-    String localeToString(final Locale locale) {
-        return m_localeToString.apply(locale);
+    @Override
+    void validateLocale(final NodeSettingsRO settings, final SettingsModelString localeModel)
+        throws InvalidSettingsException {
+        // TODO: BASICALLY we have to ensure that this value rlly works.
+        localeModel.validateSettings(settings);
     }
 
-    /**
-     * Inverses the transformation done via {@link #localeToString(Locale)}.
-     *
-     * @param string the string representation of a Locale
-     * @return the Locale associated with the given string
-     */
-    Optional<Locale> stringToLocale(final String string) {
-        return Arrays.stream(getLocales())//
-            .filter(l -> localeToString(l).equals(string))//
-            .findFirst();
+    @Override
+    void loadLocale(final NodeSettingsRO settings, final SettingsModelString localeModel) throws InvalidSettingsException {
+        localeModel.loadSettingsFrom(settings);
     }
 }

@@ -44,73 +44,42 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   May 11, 2021 (ortmann): created
+ *   Apr 19, 2017 (marcel): created
  */
 package org.knime.time.node.extract.datetime;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.function.Function;
+import org.knime.core.node.NodeDialogPane;
+import org.knime.core.node.NodeFactory;
+import org.knime.core.node.NodeView;
 
 /**
- *
- * @author ortmann
+ * @author Marcel Wiedenmann, KNIME.com, Konstanz, Germany
  */
-enum LocaleProvider {
+public final class ExtractDateTimeFieldsNodeFactory2 extends NodeFactory<ExtractDateTimeFieldsNodeModel2> {
 
-        JAVA_8(Arrays.stream(Locale.getAvailableLocales())//
-            // with java 11 new Locales without region are available that need to be filtered plus since we use the
-            // languageTag to save and load the Locales we cannot load Locales that have a variant, e.g., no_NO_NY != no_NO
-            .filter(l -> ExtractDateTimeFieldsNodeModel.LOCALE_MAPPING.containsKey(l.toLanguageTag()) //
-                || (!l.getCountry().isEmpty()//
-                    && l.getVariant().isEmpty()))//
-            .sorted(Comparator.comparing(Locale::toString))//
-            .toArray(Locale[]::new), Locale::toLanguageTag),
-
-        JAVA_11(Arrays.stream(Locale.getAvailableLocales())//
-            .filter(l -> !l.getCountry().isEmpty())//
-            .sorted(Comparator.comparing(Locale::toLanguageTag))//
-            .toArray(Locale[]::new), Locale::toString);
-
-    private final Locale[] m_locales;
-
-    private final Function<Locale, String> m_localeToString;
-
-    private LocaleProvider(final Locale[] locales, final Function<Locale, String> localeToString) {
-        m_locales = locales;
-        m_localeToString = localeToString;
+    @Override
+    public ExtractDateTimeFieldsNodeModel2 createNodeModel() {
+        return new ExtractDateTimeFieldsNodeModel2();
     }
 
-    /**
-     * Returns the Locales that can be selected by the user.
-     *
-     * @return the selectable locales
-     */
-    Locale[] getLocales() {
-        return m_locales;
+    @Override
+    protected int getNrNodeViews() {
+        return 0;
     }
 
-    /**
-     * Converts a locale to the string that is used to save it.
-     *
-     * @param locale the locale to be converted
-     * @return the string representation of this locale
-     */
-    String localeToString(final Locale locale) {
-        return m_localeToString.apply(locale);
+    @Override
+    public NodeView<ExtractDateTimeFieldsNodeModel2> createNodeView(final int viewIndex,
+        final ExtractDateTimeFieldsNodeModel2 nodeModel) {
+        return null;
     }
 
-    /**
-     * Inverses the transformation done via {@link #localeToString(Locale)}.
-     *
-     * @param string the string representation of a Locale
-     * @return the Locale associated with the given string
-     */
-    Optional<Locale> stringToLocale(final String string) {
-        return Arrays.stream(getLocales())//
-            .filter(l -> localeToString(l).equals(string))//
-            .findFirst();
+    @Override
+    protected boolean hasDialog() {
+        return true;
+    }
+
+    @Override
+    protected NodeDialogPane createNodeDialogPane() {
+        return new ExtractDateTimeFieldsNodeDialog2();
     }
 }

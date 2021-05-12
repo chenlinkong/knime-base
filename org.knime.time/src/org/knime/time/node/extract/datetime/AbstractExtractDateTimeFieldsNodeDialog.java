@@ -70,6 +70,7 @@ import org.knime.core.node.NodeDialogPane;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.NotConfigurableException;
+import org.knime.core.node.defaultnodesettings.DialogComponent;
 import org.knime.core.node.defaultnodesettings.DialogComponentBoolean;
 import org.knime.core.node.defaultnodesettings.DialogComponentColumnNameSelection;
 import org.knime.core.node.defaultnodesettings.DialogComponentStringSelection;
@@ -79,7 +80,7 @@ import org.knime.core.node.defaultnodesettings.SettingsModelString;
 /**
  * @author Marcel Wiedenmann, KNIME.com, Konstanz, Germany
  */
-class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
+abstract class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
 
     private final DialogComponentColumnNameSelection m_dialogCompColSelect;
 
@@ -105,22 +106,21 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         // dialog components:
 
         m_dialogCompColSelect = new DialogComponentColumnNameSelection(
-            AbstractExtractDateTimeFieldsNodeModel.createColSelectModel(), "Date&Time column", 0, true,
-            LocalDateValue.class, LocalTimeValue.class, LocalDateTimeValue.class, ZonedDateTimeValue.class);
+            AbstractExtractDateTimeFieldsNodeModel.createColSelectModel(), "Date&Time column", 0, true, LocalDateValue.class,
+            LocalTimeValue.class, LocalDateTimeValue.class, ZonedDateTimeValue.class);
 
-        final String[] fieldsDate = new String[]{AbstractExtractDateTimeFieldsNodeModel.YEAR,
-            AbstractExtractDateTimeFieldsNodeModel.YEAR_WEEK_BASED, AbstractExtractDateTimeFieldsNodeModel.QUARTER,
-            AbstractExtractDateTimeFieldsNodeModel.MONTH_NUMBER, AbstractExtractDateTimeFieldsNodeModel.MONTH_NAME,
-            AbstractExtractDateTimeFieldsNodeModel.WEEK, AbstractExtractDateTimeFieldsNodeModel.DAY_OF_YEAR,
-            AbstractExtractDateTimeFieldsNodeModel.DAY_OF_MONTH,
-            AbstractExtractDateTimeFieldsNodeModel.DAY_OF_WEEK_NUMBER,
-            AbstractExtractDateTimeFieldsNodeModel.DAY_OF_WEEK_NAME};
+        final String[] fieldsDate =
+            new String[]{AbstractExtractDateTimeFieldsNodeModel.YEAR, AbstractExtractDateTimeFieldsNodeModel.YEAR_WEEK_BASED,
+                AbstractExtractDateTimeFieldsNodeModel.QUARTER, AbstractExtractDateTimeFieldsNodeModel.MONTH_NUMBER,
+                AbstractExtractDateTimeFieldsNodeModel.MONTH_NAME, AbstractExtractDateTimeFieldsNodeModel.WEEK,
+                AbstractExtractDateTimeFieldsNodeModel.DAY_OF_YEAR, AbstractExtractDateTimeFieldsNodeModel.DAY_OF_MONTH,
+                AbstractExtractDateTimeFieldsNodeModel.DAY_OF_WEEK_NUMBER, AbstractExtractDateTimeFieldsNodeModel.DAY_OF_WEEK_NAME};
 
         m_dialogCompDateFields = new DialogComponentBoolean[fieldsDate.length];
         for (int i = 0; i < fieldsDate.length; i++) {
             final String field = fieldsDate[i];
-            m_dialogCompDateFields[i] = new DialogComponentBoolean(
-                AbstractExtractDateTimeFieldsNodeModel.createFieldBooleanModel(field), field);
+            m_dialogCompDateFields[i] =
+                new DialogComponentBoolean(AbstractExtractDateTimeFieldsNodeModel.createFieldBooleanModel(field), field);
         }
 
         final String[] fieldsTime =
@@ -130,8 +130,8 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         m_dialogCompTimeFields = new DialogComponentBoolean[fieldsTime.length];
         for (int i = 0; i < fieldsTime.length; i++) {
             final String field = fieldsTime[i];
-            m_dialogCompTimeFields[i] = new DialogComponentBoolean(
-                AbstractExtractDateTimeFieldsNodeModel.createFieldBooleanModel(field), field);
+            m_dialogCompTimeFields[i] =
+                new DialogComponentBoolean(AbstractExtractDateTimeFieldsNodeModel.createFieldBooleanModel(field), field);
         }
 
         final String[] subsecondUnits = new String[]{AbstractExtractDateTimeFieldsNodeModel.MILLISECOND,
@@ -148,16 +148,16 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         m_dialogCompTimeZoneFields = new DialogComponentBoolean[fieldsTimeZone.length];
         for (int i = 0; i < fieldsTimeZone.length; i++) {
             final String field = fieldsTimeZone[i];
-            m_dialogCompTimeZoneFields[i] = new DialogComponentBoolean(
-                AbstractExtractDateTimeFieldsNodeModel.createFieldBooleanModel(field), field);
+            m_dialogCompTimeZoneFields[i] =
+                new DialogComponentBoolean(AbstractExtractDateTimeFieldsNodeModel.createFieldBooleanModel(field), field);
         }
 
         m_localeProvider = localeProvider;
         m_localeModel = AbstractExtractDateTimeFieldsNodeModel.createLocaleModel();
         m_localeComboBox = new JComboBox<>(m_localeProvider.getLocales());
+    }
 
-        // dialog panel:
-
+    protected final void initPanel() {
         final JPanel panel = new JPanel(new GridBagLayout());
         final GridBagConstraints constr = new GridBagConstraints();
         constr.insets = new Insets(5, 5, 5, 5);
@@ -167,7 +167,53 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         constr.weightx = 1;
 
         // column selection:
+        constr.gridwidth = 2;
+        panel.add(createColSelectionPanel(), constr);
+        constr.gridwidth = 1;
+        constr.gridy++;
 
+        // date checkboxes:
+        constr.weightx = 0;
+        constr.gridheight = 2;
+        constr.ipadx = 100;
+        panel.add(createDatePanel(), constr);
+        constr.weightx = 1;
+        constr.gridheight = 1;
+        constr.ipadx = 0;
+        constr.gridx++;
+
+        // time checkboxes:
+        constr.ipadx = 30;
+        panel.add(createTimePanel(), constr);
+        constr.ipadx = 0;
+        constr.gridy++;
+
+        constr.ipadx = 100;
+        panel.add(createTimeZonePanel(), constr);
+        constr.ipadx = 0;
+        constr.gridy++;
+
+        // output settings:
+        constr.gridx = 0;
+        constr.gridwidth = 2;
+        constr.weighty = 1;
+        panel.add(createOutputSettingsPanel(), constr);
+
+        // register change listeners:
+        m_dialogCompColSelect.getModel().addChangeListener(l -> refreshFieldsSelectionsEnabled());
+        final DialogComponent comp = m_dialogCompTimeFields[m_dialogCompTimeFields.length - 1];
+        comp.getModel().addChangeListener(l -> m_dialogCompSubsecondUnits.getModel()
+            .setEnabled(comp.getModel().isEnabled() && ((SettingsModelBoolean)comp.getModel()).getBooleanValue()));
+
+        // add panel to dialog:
+
+        addTab("Options", panel);
+    }
+
+    /**
+     * @return
+     */
+    private JPanel createColSelectionPanel() {
         final JPanel panelColSelect = new JPanel(new GridBagLayout());
         panelColSelect.setBorder(BorderFactory.createTitledBorder("Column Selection"));
         final GridBagConstraints constrColSelect = new GridBagConstraints();
@@ -178,13 +224,13 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         constrColSelect.weightx = 1;
         constrColSelect.anchor = GridBagConstraints.WEST;
         panelColSelect.add(m_dialogCompColSelect.getComponentPanel(), constrColSelect);
-        constr.gridwidth = 2;
-        panel.add(panelColSelect, constr);
-        constr.gridwidth = 1;
-        constr.gridy++;
+        return panelColSelect;
+    }
 
-        // date checkboxes:
-
+    /**
+     * @return
+     */
+    private JPanel createDatePanel() {
         final JPanel panelDateSelect = new JPanel(new GridBagLayout());
         panelDateSelect.setBorder(BorderFactory.createTitledBorder("Date Fields"));
         final GridBagConstraints constrDateSelect = new GridBagConstraints();
@@ -197,17 +243,10 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
             panelDateSelect.add(dc.getComponentPanel(), constrDateSelect);
             constrDateSelect.gridy++;
         }
-        constr.weightx = 0;
-        constr.gridheight = 2;
-        constr.ipadx = 100;
-        panel.add(panelDateSelect, constr);
-        constr.weightx = 1;
-        constr.gridheight = 1;
-        constr.ipadx = 0;
-        constr.gridx++;
+        return panelDateSelect;
+    }
 
-        // time checkboxes:
-
+    private Component createTimePanel() {
         final JPanel panelTimeSelect = new JPanel(new GridBagLayout());
         panelTimeSelect.setBorder(BorderFactory.createTitledBorder("Time Fields"));
         final GridBagConstraints constrTimeSelect = new GridBagConstraints();
@@ -227,32 +266,29 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         constrTimeSelect.gridx++;
         constrTimeSelect.weightx = 1;
         panelTimeSelect.add(m_dialogCompSubsecondUnits.getComponentPanel(), constrTimeSelect);
-        constr.ipadx = 30;
-        panel.add(panelTimeSelect, constr);
-        constr.ipadx = 0;
-        constr.gridy++;
+        return panelTimeSelect;
+    }
 
-        // time zone checkboxes:
-
+    private JPanel createTimeZonePanel() {
         final JPanel panelTimeZoneSelect = new JPanel(new GridBagLayout());
         panelTimeZoneSelect.setBorder(BorderFactory.createTitledBorder("Time Zone Fields"));
         final GridBagConstraints constrTimeZoneSelect = new GridBagConstraints();
-        constrTimeZoneSelect.fill = GridBagConstraints.VERTICAL;
+        constrTimeZoneSelect.fill = GridBagConstraints.NONE;
         constrTimeZoneSelect.gridx = 0;
         constrTimeZoneSelect.gridy = 0;
         constrTimeZoneSelect.weightx = 1;
-        constrTimeZoneSelect.anchor = GridBagConstraints.WEST;
+        constrTimeZoneSelect.anchor = GridBagConstraints.NORTHWEST;
         for (final DialogComponentBoolean dc : m_dialogCompTimeZoneFields) {
             panelTimeZoneSelect.add(dc.getComponentPanel(), constrTimeZoneSelect);
             constrTimeZoneSelect.gridy++;
         }
-        constr.ipadx = 100;
-        panel.add(panelTimeZoneSelect, constr);
-        constr.ipadx = 0;
-        constr.gridy++;
+        constrTimeZoneSelect.weighty = 1;
+        constrTimeZoneSelect.fill = GridBagConstraints.VERTICAL;
+        panelTimeZoneSelect.add(new JPanel(), constrTimeZoneSelect);
+        return panelTimeZoneSelect;
+    }
 
-        // output settings:
-
+    private Component createOutputSettingsPanel() {
         final JPanel panelOutput = new JPanel(new GridBagLayout());
         panelOutput.setBorder(BorderFactory.createTitledBorder("Localization (month and day names, etc.)"));
         final GridBagConstraints constrOutput = new GridBagConstraints();
@@ -264,37 +300,19 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         constrOutput.weighty = 1;
         constrOutput.anchor = GridBagConstraints.WEST;
         panelOutput.add(createLocalePane(), constrOutput);
-        constr.gridx = 0;
-        constr.gridwidth = 2;
-        constr.weighty = 1;
-        panel.add(panelOutput, constr);
-
-        // register change listeners:
-
-        m_dialogCompColSelect.getModel().addChangeListener(l -> refreshFieldsSelectionsEnabled());
-
-        dialogCompSubsecond.getModel().addChangeListener(
-            l -> m_dialogCompSubsecondUnits.getModel().setEnabled(dialogCompSubsecond.getModel().isEnabled()
-                && ((SettingsModelBoolean)dialogCompSubsecond.getModel()).getBooleanValue()));
-
-        // add panel to dialog:
-
-        addTab("Options", panel);
+        return panelOutput;
     }
 
-    /**
-     * @return
-     */
-    private Component createLocalePane() {
+    protected Component createLocalePane() {
         final JPanel p = new JPanel();
         p.add(new JLabel("Locale"));
         p.add(m_localeComboBox);
+        extendLocalePanel(p);
         return p;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    abstract void extendLocalePanel(final JPanel localePanel);
+
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) throws InvalidSettingsException {
         m_dialogCompColSelect.saveSettingsTo(settings);
@@ -311,11 +329,11 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         m_localeModel.setStringValue(
             m_localeProvider.localeToString(m_localeComboBox.getItemAt(m_localeComboBox.getSelectedIndex())));
         m_localeModel.saveSettingsTo(settings);
+        saveAdditionalSettings(settings);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    abstract void saveAdditionalSettings(final NodeSettingsWO settings) throws InvalidSettingsException;
+
     @Override
     protected void loadSettingsFrom(final NodeSettingsRO settings, final DataTableSpec[] specs)
         throws NotConfigurableException {
@@ -336,8 +354,12 @@ class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
             // TODO this needs to be fixed and btw. we don't need the settings model anymore
         }
         m_localeProvider.stringToLocale(m_localeModel.getStringValue()).ifPresent(m_localeComboBox::setSelectedItem);
+        loadAdditionalSettings(settings, specs);
         refreshFieldsSelectionsEnabled();
     }
+
+    abstract void loadAdditionalSettings(final NodeSettingsRO settings, final DataTableSpec[] specs)
+        throws NotConfigurableException;
 
     private void refreshFieldsSelectionsEnabled() {
         if (m_dialogCompColSelect.getSelectedAsSpec() != null) {

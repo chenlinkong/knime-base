@@ -44,9 +44,15 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   May 11, 2021 (ortmann): created
+ *   May 12, 2021 (ortmann): created
  */
 package org.knime.time.node.extract.datetime;
+
+import javax.swing.JPanel;
+
+import org.knime.core.data.DataTableSpec;
+import org.knime.core.node.NodeSettingsRO;
+import org.knime.core.node.NodeSettingsWO;
 
 /**
  *
@@ -56,6 +62,21 @@ final class ExtractDateTimeFieldsNodeDialog2 extends AbstractExtractDateTimeFiel
 
     ExtractDateTimeFieldsNodeDialog2() {
         super(LocaleProvider.JAVA_11);
+    }
+
+    @Override
+    void extendLocalePanel(final JPanel localePanel) {
+        // nothing to do
+    }
+
+    @Override
+    void saveAdditionalSettings(final NodeSettingsWO settings) {
+        // nothing to do
+    }
+
+    @Override
+    void loadAdditionalSettings(final NodeSettingsRO settings, final DataTableSpec[] specs) {
+        // nothing to do
     }
 
 }

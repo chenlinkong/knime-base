@@ -52,10 +52,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.MissingResourceException;
+import java.util.Optional;
 
+import org.apache.commons.lang3.LocaleUtils;
 import org.knime.core.node.InvalidSettingsException;
 import org.knime.core.node.NodeSettingsRO;
+import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelBoolean;
+import org.knime.core.node.defaultnodesettings.SettingsModelString;
 
 /**
  * @author Marcel Wiedenmann, KNIME.com, Konstanz, Germany
@@ -165,15 +170,58 @@ final class ExtractDateTimeFieldsNodeModel extends AbstractExtractDateTimeFields
     }
 
     @Override
-    Locale getLocale(final String selectedLocale) {
+    Optional<Locale> getLocale(final String selectedLocale) {
         return getLocale(selectedLocale, !USES_COMPAT && m_mapLocales.getBooleanValue());
     }
 
-    static Locale getLocale(String selectedLocale, final boolean mapLocales) {
+    static Optional<Locale> getLocale(String selectedLocale, final boolean mapLocales) {
         if (mapLocales) {
             selectedLocale = LOCALE_MAPPING.getOrDefault(selectedLocale, selectedLocale);
         }
-        return Locale.forLanguageTag(selectedLocale);
+        return LocaleProvider.JAVA_8.stringToLocale(selectedLocale);
+    }
+
+    @Override
+    void saveLocale(final NodeSettingsWO settings, final SettingsModelString localeModel) {
+        try {
+            // conversion necessary for backwards compatibility (AP-8915)
+            final Locale locale = LocaleUtils.toLocale(localeModel.getStringValue());
+            localeModel.setStringValue(locale.toLanguageTag());
+        } catch (IllegalArgumentException e) {
+            // do nothing, locale is already in correct format
+        }
+        localeModel.saveSettingsTo(settings);
+        m_mapLocales.saveSettingsTo(settings);
+    }
+
+    @Override
+    void loadLocale(final NodeSettingsRO settings, final SettingsModelString localeModel)
+        throws InvalidSettingsException {
+        localeModel.loadSettingsFrom(settings);
+        try {
+            // check for backwards compatibility (AP-8915)
+            LocaleUtils.toLocale(localeModel.getStringValue());
+        } catch (IllegalArgumentException e) {
+            try {
+                final String iso3Country = Locale.forLanguageTag(localeModel.getStringValue()).getISO3Country();
+                final String iso3Language = Locale.forLanguageTag(localeModel.getStringValue()).getISO3Language();
+                if (iso3Country.isEmpty() && iso3Language.isEmpty()) {
+                    throw new InvalidSettingsException("Unsupported locale '" + localeModel.getStringValue() + "'");
+                }
+            } catch (MissingResourceException ex) {
+                throw new InvalidSettingsException(
+                    "Unsupported locale '" + localeModel.getStringValue() + "': " + ex.getMessage(), ex);
+            }
+        }
+        m_mapLocales.loadSettingsFrom(settings);
+    }
+
+    @Override
+    void validateLocale(final NodeSettingsRO settings, final SettingsModelString localeModel)
+        throws InvalidSettingsException {
+        // TODO: this is not sufficient
+        localeModel.validateSettings(settings);
+        m_mapLocales.validateSettings(settings);
     }
 
 }

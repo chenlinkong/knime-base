@@ -1,7 +1,7 @@
 /*
  * ------------------------------------------------------------------------
  *
- *  Copyright by KNIME AG, Zurich, Switzerland
+\ *  Copyright by KNIME AG, Zurich, Switzerland
  *  Website: http://www.knime.com; Email: contact@knime.com
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -52,9 +52,8 @@ import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
-import java.util.MissingResourceException;
+import java.util.Optional;
 
-import org.apache.commons.lang3.LocaleUtils;
 import org.knime.core.data.DataCell;
 import org.knime.core.data.DataColumnDomainCreator;
 import org.knime.core.data.DataColumnSpec;
@@ -204,9 +203,6 @@ abstract class AbstractExtractDateTimeFieldsNodeModel extends SimpleStreamableFu
     private final SettingsModelBoolean[] m_timeZoneModels =
         new SettingsModelBoolean[]{m_timeZoneNameModel, m_timeZoneOffsetModel};
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     protected ColumnRearranger createColumnRearranger(final DataTableSpec spec) throws InvalidSettingsException {
         final String selectedCol = m_colSelectModel.getStringValue();
@@ -228,7 +224,9 @@ abstract class AbstractExtractDateTimeFieldsNodeModel extends SimpleStreamableFu
         final boolean isLocalDateTime = selectedColType.isCompatible(LocalDateTimeValue.class);
         final boolean isZonedDateTime = selectedColType.isCompatible(ZonedDateTimeValue.class);
 
-        final Locale locale = getLocale(m_localeModel.getStringValue());
+        final String selectedLocale = m_localeModel.getStringValue();
+        final Locale locale = getLocale(selectedLocale).orElseThrow(
+            () -> new IllegalArgumentException(String.format("The selected locale %s does not exist", selectedLocale)));
 
         final UniqueNameGenerator nameGenerator = new UniqueNameGenerator(spec);
         final DataColumnDomainCreator domainCreator = new DataColumnDomainCreator();
@@ -796,10 +794,8 @@ abstract class AbstractExtractDateTimeFieldsNodeModel extends SimpleStreamableFu
         return rearranger;
     }
 
-    abstract Locale getLocale(final String selectedLocale);
-    /**
-     * {@inheritDoc}
-     */
+    abstract Optional<Locale> getLocale(final String selectedLocale);
+
     @Override
     protected void saveSettingsTo(final NodeSettingsWO settings) {
         m_colSelectModel.saveSettingsTo(settings);
@@ -813,19 +809,11 @@ abstract class AbstractExtractDateTimeFieldsNodeModel extends SimpleStreamableFu
         for (final SettingsModelBoolean sm : m_timeZoneModels) {
             sm.saveSettingsTo(settings);
         }
-        try {
-            // conversion necessary for backwards compatibility (AP-8915)
-            final Locale locale = LocaleUtils.toLocale(m_localeModel.getStringValue());
-            m_localeModel.setStringValue(locale.toLanguageTag());
-        } catch (IllegalArgumentException e) {
-            // do nothing, locale is already in correct format
-        }
-        m_localeModel.saveSettingsTo(settings);
+        saveLocale(settings, m_localeModel);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    abstract void saveLocale(final NodeSettingsWO settings, final SettingsModelString localeModel);
+
     @Override
     protected void validateSettings(final NodeSettingsRO settings) throws InvalidSettingsException {
         m_colSelectModel.validateSettings(settings);
@@ -846,8 +834,11 @@ abstract class AbstractExtractDateTimeFieldsNodeModel extends SimpleStreamableFu
         for (final SettingsModelBoolean sm : m_timeZoneModels) {
             sm.validateSettings(settings);
         }
-        m_localeModel.validateSettings(settings);
+        validateLocale(settings, m_localeModel);
     }
+
+    abstract void validateLocale(final NodeSettingsRO settings, final SettingsModelString localeModel)
+        throws InvalidSettingsException;
 
     @Override
     protected void loadValidatedSettingsFrom(final NodeSettingsRO settings) throws InvalidSettingsException {
@@ -869,26 +860,11 @@ abstract class AbstractExtractDateTimeFieldsNodeModel extends SimpleStreamableFu
         for (final SettingsModelBoolean sm : m_timeZoneModels) {
             sm.loadSettingsFrom(settings);
         }
-        m_localeModel.loadSettingsFrom(settings);
-
-        final String localeStringValue = m_localeModel.getStringValue();
-        try {
-            // check for backwards compatibility (AP-8915)
-            LocaleUtils.toLocale(localeStringValue);
-        } catch (IllegalArgumentException e) {
-            try {
-                final Locale locale = Locale.forLanguageTag(localeStringValue);
-                final String iso3Country = locale.getISO3Country();
-                final String iso3Language = locale.getISO3Language();
-                if (iso3Country.isEmpty() && iso3Language.isEmpty()) {
-                    throw new InvalidSettingsException("Unsupported locale '" + localeStringValue + "'");
-                }
-            } catch (MissingResourceException ex) {
-                throw new InvalidSettingsException(
-                    "Unsupported locale '" + localeStringValue + "': " + ex.getMessage(), ex);
-            }
-        }
+        loadLocale(settings, m_localeModel);
     }
+
+    abstract void loadLocale(final NodeSettingsRO settings, final SettingsModelString localeModel)
+        throws InvalidSettingsException;
 
     private static DataColumnSpec createBoundedIntColumn(final DataColumnDomainCreator domainCreator,
         final UniqueNameGenerator nameGenerator, final String suggestedName, final int lower, final int upper) {
