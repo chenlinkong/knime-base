@@ -76,9 +76,7 @@ public class ExtractDateTimeFieldsNodeModelTest {
             .collect(Collectors.toSet());
 
     private static Locale getLocale(final String languageTag) {
-        return Arrays.stream(Locale.getAvailableLocales())//
-            .filter(l -> l.toLanguageTag().equals(languageTag))//
-            .findFirst()
+        return LocaleProvider.JAVA_8.stringToLocale(languageTag)
             .orElseThrow(() -> new IllegalArgumentException("No such locale found with tag " + languageTag));
     }
 
@@ -140,14 +138,15 @@ public class ExtractDateTimeFieldsNodeModelTest {
     @Test
     public void test_mapping() {
         for (final String l : J_8_REGION_FREE_LOCALES) {
-            assertNotEquals(Locale.forLanguageTag(l), ExtractDateTimeFieldsNodeModel.getLocale(l, true));
-            assertEquals(Locale.forLanguageTag(l), ExtractDateTimeFieldsNodeModel.getLocale(l, false));
+            assertNotEquals(getLocale(l), ExtractDateTimeFieldsNodeModel.getLocale(l, true).orElseThrow());
+            assertEquals(getLocale(l), ExtractDateTimeFieldsNodeModel.getLocale(l, false).orElseThrow());
         }
         for (final Locale l : Locale.getAvailableLocales()) {
-            final String languageTag = l.toLanguageTag();
+            final String languageTag = LocaleProvider.JAVA_8.localeToString(l);
             if (l.getVariant().isEmpty() && !J_8_REGION_FREE_LOCALES.contains(languageTag)) {
-                assertEquals(l, ExtractDateTimeFieldsNodeModel.getLocale(languageTag, true));
-                assertEquals(l, ExtractDateTimeFieldsNodeModel.getLocale(languageTag, false));
+                System.out.println(l.toString());
+                assertEquals(l, ExtractDateTimeFieldsNodeModel.getLocale(languageTag, true).orElseThrow());
+                assertEquals(l, ExtractDateTimeFieldsNodeModel.getLocale(languageTag, false).orElseThrow());
             }
         }
     }
