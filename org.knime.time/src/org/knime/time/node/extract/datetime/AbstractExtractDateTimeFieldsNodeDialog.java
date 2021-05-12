@@ -52,9 +52,7 @@ import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.util.Arrays;
 import java.util.Locale;
-import java.util.Optional;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComboBox;
@@ -81,7 +79,7 @@ import org.knime.core.node.defaultnodesettings.SettingsModelString;
 /**
  * @author Marcel Wiedenmann, KNIME.com, Konstanz, Germany
  */
-abstract class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
+class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
 
     private final DialogComponentColumnNameSelection m_dialogCompColSelect;
 
@@ -154,8 +152,9 @@ abstract class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
                 AbstractExtractDateTimeFieldsNodeModel.createFieldBooleanModel(field), field);
         }
 
+        m_localeProvider = localeProvider;
         m_localeModel = AbstractExtractDateTimeFieldsNodeModel.createLocaleModel();
-        m_localeComboBox = new JComboBox<>(getLocales());
+        m_localeComboBox = new JComboBox<>(m_localeProvider.getLocales());
 
         // dialog panel:
 
@@ -294,33 +293,6 @@ abstract class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
     }
 
     /**
-     * Returns the Locales that can be selected by the user.
-     *
-     * @return the selectable locales
-     */
-    abstract Locale[] getLocales();
-
-    /**
-     * Converts a locale to the string that is used to save it.
-     *
-     * @param locale the locale to be converted
-     * @return the string representation of this locale
-     */
-    abstract String localeToString(final Locale locale);
-
-    /**
-     * Inverses the transformation done via {@link #localeToString(Locale)}.
-     *
-     * @param string the string representation of a Locale
-     * @return the Locale associated with the given string
-     */
-    private Optional<Locale> stringToLocale(final String string) {
-        return Arrays.stream(getLocales())//
-            .filter(l -> localeToString(l).equals(string))//
-            .findFirst();
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -336,7 +308,8 @@ abstract class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         for (final DialogComponentBoolean dc : m_dialogCompTimeZoneFields) {
             dc.saveSettingsTo(settings);
         }
-        m_localeModel.setStringValue(localeToString(m_localeComboBox.getItemAt(m_localeComboBox.getSelectedIndex())));
+        m_localeModel.setStringValue(
+            m_localeProvider.localeToString(m_localeComboBox.getItemAt(m_localeComboBox.getSelectedIndex())));
         m_localeModel.saveSettingsTo(settings);
     }
 
@@ -362,7 +335,7 @@ abstract class AbstractExtractDateTimeFieldsNodeDialog extends NodeDialogPane {
         } catch (InvalidSettingsException ex) {
             // TODO this needs to be fixed and btw. we don't need the settings model anymore
         }
-        stringToLocale(m_localeModel.getStringValue()).ifPresent(m_localeComboBox::setSelectedItem);
+        m_localeProvider.stringToLocale(m_localeModel.getStringValue()).ifPresent(m_localeComboBox::setSelectedItem);
         refreshFieldsSelectionsEnabled();
     }
 

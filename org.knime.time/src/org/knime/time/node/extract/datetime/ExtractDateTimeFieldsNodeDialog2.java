@@ -48,25 +48,14 @@
  */
 package org.knime.time.node.extract.datetime;
 
-import java.util.Arrays;
-import java.util.Locale;
-
 /**
  *
  * @author ortmann
  */
 final class ExtractDateTimeFieldsNodeDialog2 extends AbstractExtractDateTimeFieldsNodeDialog {
 
-    @Override
-    Locale[] getLocales() {
-        return Arrays.stream(Locale.getAvailableLocales())//
-            .filter(l -> !l.getCountry().isEmpty())//
-            .toArray(Locale[]::new);
-    }
-
-    @Override
-    String localeToString(final Locale locale) {
-        return locale.toString();
+    ExtractDateTimeFieldsNodeDialog2() {
+        super(LocaleProvider.JAVA_11);
     }
 
 }
