@@ -44,44 +44,29 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Apr 19, 2017 (marcel): created
+ *   May 11, 2021 (ortmann): created
  */
 package org.knime.time.node.extract.datetime;
 
 import java.util.Arrays;
 import java.util.Locale;
-import java.util.Optional;
 
 /**
- * @author Marcel Wiedenmann, KNIME.com, Konstanz, Germany
+ *
+ * @author ortmann
  */
-final class ExtractDateTimeFieldsNodeDialog extends AbstractExtractDateTimeFieldsNodeDialog {
+final class ExtractDateTimeFieldsNodeDialog2 extends AbstractExtractDateTimeFieldsNodeDialog {
 
     @Override
     Locale[] getLocales() {
         return Arrays.stream(Locale.getAvailableLocales())//
-            .filter(ExtractDateTimeFieldsNodeDialog::filterLocalesByLanguageTag)//
-            .sorted()//
+            .filter(l -> !l.getCountry().isEmpty())//
             .toArray(Locale[]::new);
-    }
-
-    private static boolean filterLocalesByLanguageTag(final Locale locale) {
-        // with java 11 new Locales without region are available that need to be filtered plus since we use the
-        // languageTag to save and load the Locales we cannot load Locales that have a variant, e.g., no_NO_NY != no_NO
-        return ExtractDateTimeFieldsNodeModel.LOCALE_MAPPING.containsKey(locale.toLanguageTag()) //
-            || (!locale.getCountry().isEmpty()//
-                && locale.getVariant().isEmpty());
     }
 
     @Override
     String localeToString(final Locale locale) {
-        return locale.toLanguageTag();
+        return locale.toString();
     }
 
-    @Override
-    Optional<Locale> stringToLocale(final String string) {
-        return Arrays.stream(getLocales())//
-            .filter(l -> localeToString(l).equals(string))//
-            .findFirst();
-    }
 }

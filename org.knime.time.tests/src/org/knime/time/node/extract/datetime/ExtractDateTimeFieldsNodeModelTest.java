@@ -145,9 +145,7 @@ public class ExtractDateTimeFieldsNodeModelTest {
         }
         for (final Locale l : Locale.getAvailableLocales()) {
             final String languageTag = l.toLanguageTag();
-            if (!J_8_REGION_FREE_LOCALES.contains(languageTag)) {
-                System.out.println(
-                    l + "\t" + l.toLanguageTag() + "\t" + l.toString() + "\t" + l.getCountry() + "\t" + l.getVariant());
+            if (l.getVariant().isEmpty() && !J_8_REGION_FREE_LOCALES.contains(languageTag)) {
                 assertEquals(l, ExtractDateTimeFieldsNodeModel.getLocale(languageTag, true));
                 assertEquals(l, ExtractDateTimeFieldsNodeModel.getLocale(languageTag, false));
             }

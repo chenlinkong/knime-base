@@ -44,7 +44,7 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Apr 19, 2017 (marcel): created
+ *   May 11, 2021 (ortmann): created
  */
 package org.knime.time.node.extract.datetime;
 
@@ -53,32 +53,73 @@ import java.util.Locale;
 import java.util.Optional;
 
 /**
- * @author Marcel Wiedenmann, KNIME.com, Konstanz, Germany
+ *
+ * @author ortmann
  */
-final class ExtractDateTimeFieldsNodeDialog extends AbstractExtractDateTimeFieldsNodeDialog {
+enum LocaleProvider {
 
-    @Override
-    Locale[] getLocales() {
-        return Arrays.stream(Locale.getAvailableLocales())//
-            .filter(ExtractDateTimeFieldsNodeDialog::filterLocalesByLanguageTag)//
-            .sorted()//
-            .toArray(Locale[]::new);
-    }
+        JAVA_8 {
 
-    private static boolean filterLocalesByLanguageTag(final Locale locale) {
-        // with java 11 new Locales without region are available that need to be filtered plus since we use the
-        // languageTag to save and load the Locales we cannot load Locales that have a variant, e.g., no_NO_NY != no_NO
-        return ExtractDateTimeFieldsNodeModel.LOCALE_MAPPING.containsKey(locale.toLanguageTag()) //
-            || (!locale.getCountry().isEmpty()//
-                && locale.getVariant().isEmpty());
-    }
+            private final Locale[] m_locales = Arrays.stream(Locale.getAvailableLocales())//
+                // with java 11 new Locales without region are available that need to be filtered plus since we use the
+                // languageTag to save and load the Locales we cannot load Locales that have a variant, e.g., no_NO_NY != no_NO
+                .filter(l -> ExtractDateTimeFieldsNodeModel.LOCALE_MAPPING.containsKey(l.toLanguageTag()) //
+                    || (!l.getCountry().isEmpty()//
+                        && l.getVariant().isEmpty()))//
+                .sorted()//
+                .toArray(Locale[]::new);
 
-    @Override
-    String localeToString(final Locale locale) {
-        return locale.toLanguageTag();
-    }
+            @Override
+            Locale[] getLocales() {
+                return m_locales;
+            }
 
-    @Override
+            @Override
+            String localeToString(final Locale locale) {
+                return locale.toLanguageTag();
+            }
+
+        },
+
+        JAVA_11 {
+
+            private final Locale[] m_locales = Arrays.stream(Locale.getAvailableLocales())//
+                .filter(l -> !l.getCountry().isEmpty())//
+                .toArray(Locale[]::new);
+
+            @Override
+            Locale[] getLocales() {
+                return m_locales;
+            }
+
+            @Override
+            String localeToString(final Locale locale) {
+                return locale.toString();
+            }
+
+        };
+
+    /**
+     * Returns the Locales that can be selected by the user.
+     *
+     * @return the selectable locales
+     */
+    abstract Locale[] getLocales();
+
+    /**
+     * Converts a locale to the string that is used to save it.
+     *
+     * @param locale the locale to be converted
+     * @return the string representation of this locale
+     */
+    abstract String localeToString(final Locale locale);
+
+    /**
+     * Inverses the transformation done via {@link #localeToString(Locale)}.
+     *
+     * @param string the string representation of a Locale
+     * @return the Locale associated with the given string
+     */
     Optional<Locale> stringToLocale(final String string) {
         return Arrays.stream(getLocales())//
             .filter(l -> localeToString(l).equals(string))//
