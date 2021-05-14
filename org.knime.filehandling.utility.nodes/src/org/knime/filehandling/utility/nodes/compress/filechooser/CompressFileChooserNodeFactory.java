@@ -44,30 +44,63 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 28, 2020 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
+ *   27 Aug 2020 (Timmo Waller-Ehrat, KNIME GmbH, Konstanz, Germany): created
  */
-package org.knime.filehandling.utility.nodes.compress.archiver;
+package org.knime.filehandling.utility.nodes.compress.filechooser;
 
-import java.io.IOException;
-import java.nio.file.Path;
+import java.util.Optional;
 
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
+import org.knime.core.node.ConfigurableNodeFactory;
+import org.knime.core.node.NodeDialogPane;
+import org.knime.core.node.NodeView;
+import org.knime.core.node.context.NodeCreationConfiguration;
+import org.knime.core.node.context.ports.PortsConfiguration;
+import org.knime.filehandling.core.port.FileSystemPortObject;
+import org.knime.filehandling.utility.nodes.compress.AbstractCompressNodeConfig;
 
 /**
- * A {@link CheckedExceptionBiFunction} that allows to create an {@link ArchiveEntry} from a given {@link Path} and
- * entry name.
+ * Node Factory for the "Compress Files/Folder" no table input node.
  *
- * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
+ * @author Timmo Waller-Ehrat, KNIME GmbH, Konstanz, Germany
  */
-public interface ArchiveEntryCreator extends CheckedExceptionBiFunction<Path, String, ArchiveEntry, IOException> {
+public final class CompressFileChooserNodeFactory extends ConfigurableNodeFactory<CompressFileChooserNodeModel> {
 
-    /**
-     * Validates that an archive can be created provided the given parameters.
-     *
-     * @param path the path to validate
-     * @param entryName the entry name to validate
-     */
-    void validate(Path path, String entryName);
+    @Override
+    protected Optional<PortsConfigurationBuilder> createPortsConfigBuilder() {
+        final PortsConfigurationBuilder builder = new PortsConfigurationBuilder();
+        builder.addOptionalInputPortGroup(AbstractCompressNodeConfig.CONNECTION_INPUT_FILE_PORT_GRP_NAME,
+            FileSystemPortObject.TYPE);
+        builder.addOptionalInputPortGroup(AbstractCompressNodeConfig.CONNECTION_OUTPUT_DIR_PORT_GRP_NAME,
+            FileSystemPortObject.TYPE);
 
+        return Optional.of(builder);
+    }
+
+    @Override
+    protected CompressFileChooserNodeModel createNodeModel(final NodeCreationConfiguration creationConfig) {
+        return new CompressFileChooserNodeModel(
+            (creationConfig.getPortConfig().orElseThrow(IllegalStateException::new)));
+    }
+
+    @Override
+    protected NodeDialogPane createNodeDialogPane(final NodeCreationConfiguration creationConfig) {
+        final PortsConfiguration portsConfig = creationConfig.getPortConfig().orElseThrow(IllegalStateException::new);
+        return new CompressFileChooserNodeDialog(portsConfig, new CompressFileChooserNodeConfig(portsConfig));
+    }
+
+    @Override
+    public NodeView<CompressFileChooserNodeModel> createNodeView(final int viewIndex,
+        final CompressFileChooserNodeModel nodeModel) {
+        return null;
+    }
+
+    @Override
+    protected int getNrNodeViews() {
+        return 0;
+    }
+
+    @Override
+    protected boolean hasDialog() {
+        return true;
+    }
 }

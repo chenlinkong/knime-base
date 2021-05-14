@@ -44,30 +44,67 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 28, 2020 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
+ *   Apr 13, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.compress.archiver;
+package org.knime.filehandling.utility.nodes.compress.table;
 
 import java.io.IOException;
 import java.nio.file.Path;
 
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
+import org.knime.core.node.BufferedDataTable;
+import org.knime.filehandling.core.connections.FSConnection;
+import org.knime.filehandling.core.data.location.FSLocationValueMetaData;
+import org.knime.filehandling.core.util.CheckedExceptionFunction;
+import org.knime.filehandling.utility.nodes.compress.iterator.CompressEntry;
+import org.knime.filehandling.utility.nodes.compress.iterator.CompressFileFolderEntry;
+import org.knime.filehandling.utility.nodes.compress.iterator.CompressIterator;
+import org.knime.filehandling.utility.nodes.truncator.PathToStringTruncator;
+import org.knime.filehandling.utility.nodes.utils.iterators.FsCellColumnIterator;
 
 /**
- * A {@link CheckedExceptionBiFunction} that allows to create an {@link ArchiveEntry} from a given {@link Path} and
- * entry name.
+ * Abstract implementation of a {@link CompressIterator} that processed an input table.
  *
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
-public interface ArchiveEntryCreator extends CheckedExceptionBiFunction<Path, String, ArchiveEntry, IOException> {
+abstract class AbstractCompressTableIterator implements CompressIterator {
+
+    private final FsCellColumnIterator m_fsCellIterator;
+
+    private final boolean m_includeEmptyFolders;
 
     /**
-     * Validates that an archive can be created provided the given parameters.
+     * Constructor.
      *
-     * @param path the path to validate
-     * @param entryName the entry name to validate
+     * @param table the input table
+     * @param pathColIdx the column containing the paths that need to be compressed
+     * @param connection the {@link FSConnection}
+     * @param metaData the {@link FSLocationValueMetaData}
+     * @param includeEmptyFolders flag indicating whether or not empty folder should be compressed
      */
-    void validate(Path path, String entryName);
+    AbstractCompressTableIterator(final BufferedDataTable table, final int pathColIdx, final FSConnection connection,
+        final FSLocationValueMetaData metaData, final boolean includeEmptyFolders) {
+        m_fsCellIterator = new FsCellColumnIterator(table, pathColIdx, connection, metaData);
+        m_includeEmptyFolders = includeEmptyFolders;
+    }
+
+    @Override
+    public final long size() {
+        return m_fsCellIterator.size();
+    }
+
+    @Override
+    public final boolean hasNext() {
+        return m_fsCellIterator.hasNext();
+    }
+
+    final CompressEntry
+        createEntry(final CheckedExceptionFunction<Path, PathToStringTruncator, IOException> truncatorFac) {
+        return new CompressFileFolderEntry(m_fsCellIterator.next(), m_includeEmptyFolders, truncatorFac);
+    }
+
+    @Override
+    public void close() {
+        m_fsCellIterator.close();
+    }
 
 }

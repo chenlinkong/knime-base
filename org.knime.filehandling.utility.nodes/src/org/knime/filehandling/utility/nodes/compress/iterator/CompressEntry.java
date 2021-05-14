@@ -44,30 +44,26 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 28, 2020 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
+ *   Feb 4, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.compress.archiver;
+package org.knime.filehandling.utility.nodes.compress.iterator;
 
 import java.io.IOException;
-import java.nio.file.Path;
-
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
+import java.util.List;
 
 /**
- * A {@link CheckedExceptionBiFunction} that allows to create an {@link ArchiveEntry} from a given {@link Path} and
- * entry name.
+ * A compress entry encapsulates a list of {@link CompressPair}s that must be compressed.
  *
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
-public interface ArchiveEntryCreator extends CheckedExceptionBiFunction<Path, String, ArchiveEntry, IOException> {
+public interface CompressEntry {
 
     /**
-     * Validates that an archive can be created provided the given parameters.
+     * Returns the list of {@link CompressPair}s that have to be compressed.
      *
-     * @param path the path to validate
-     * @param entryName the entry name to validate
+     * @return the {@link CompressPair}s that have to be compressed
+     * @throws IOException - If something went wrong while compiling this list
      */
-    void validate(Path path, String entryName);
+    List<CompressPair> getPaths() throws IOException;
 
 }

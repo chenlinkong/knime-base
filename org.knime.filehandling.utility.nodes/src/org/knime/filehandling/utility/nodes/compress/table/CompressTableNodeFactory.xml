@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<knimeNode icon="../compress16x16.png" type="Other"
+	xmlns="http://knime.org/node/v4.1"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://knime.org/node/v4.1 http://knime.org/node/v4.1.xsd">
+	<name>Compress Files/Folder (Table)</name>
+
+	<shortDescription>
+		Compresses a file, a folder or files in folder to an archive.
+	</shortDescription>
+
+	<fullDescription>
+		<intro>
+            <p><i>This node supports the 
+            </i><a href="https://docs.knime.com/latest/analytics_platform_file_handling_guide/index.html#path"><i>path flow variable.</i></a>
+            <i> For further information about file handling in general see the 
+            </i><a href="https://docs.knime.com/latest/analytics_platform_file_handling_guide/index.html"><i>File Handling Guide.</i></a><br/></p>
+            <p>
+			This node compresses files or a folder to an archive. If the compression format is being changed the 
+			file extension of the archive to create is adapted automatically.
+			<br />
+			<br />
+			Supported archive formats are:
+			<ul>
+				<li>.zip</li>
+				<li>.jar</li>
+				<li>.tar</li>
+				<li>.tar.gz</li>
+				<li>.tar.bz2</li>
+				<li>.cpio</li>
+			</ul>
+			</p>
+		</intro>
+		<option name="Source column">
+			Allows to select the column containing the paths to the files/folders that must be compressed.
+		</option>
+		<option name="Write to">
+				Select a file system on which you want to save your archive file.
+				There are four default file system options to choose from:
+				<br />
+				<ul>
+					<li><i>Local File System:</i> Allows you to select a folder on your
+	                    local system.
+	                </li>
+	                <li><i>Mountpoint:</i> Allows you to write to a mountpoint.
+	                	When selected, a new drop-down menu appears to choose the mountpoint.
+	                	Unconnected mountpoints are greyed out but can still be selected (note that browsing is disabled in this case).
+	                	Go to the KNIME Explorer and connect to the mountpoint to enable browsing.
+	                	A mountpoint is displayed in red if it was previously selected but is no longer available.
+	                	You won't be able to save the dialog as long as you don't select a valid i.e. known mountpoint.
+	                </li>
+	                <li><i>Relative to:</i> Allows you to choose whether to resolve the path
+						relative to the current mountpoint, current workflow or the current workflow's data area.
+	                When selected a new drop-down menu appears to choose which of the three options to use.
+	                </li>
+	                <li>
+					<i>Custom/KNIME URL:</i> 
+					Allows to specify a URL (e.g. file://, http:// or knime:// protocol). 
+	                When selected, a spinner appears that allows you to specify the desired connection and write timeout in milliseconds.
+	                In case it takes longer to connect to the host / write the file, the node fails to execute.
+	                Browsing is disabled for this option.
+	            </li>
+				</ul>
+				It is possible to use other file systems with this node. Therefore,
+				you have to enable the file system connection input port of this
+				node
+				by clicking the
+				<b>...</b>
+				in the bottom left corner of the node's icon and choose
+				<i>Add ports</i> followed by <i>Destination file system connection</i>
+				.
+				<br />
+				Afterwards, you can simply connect the desired connector node to this node.
+				The file system connection will then be shown in the drop-down menu.
+				It is grayed out if the file system is not connected in which case you have to (re)execute the connector node first.
+				Note: The default file systems listed above can't be selected if a file system is provided via the input port.
+			</option>
+		<option name="File">
+			    Enter a valid path where the created archive should get saved. The
+				required syntax of a path depends on the chosen file system, such as &quot;C:\path\to\file&quot; (Local
+				File System on Windows) or  &quot;/path/to/file&quot; (Local
+	            File System on Linux/MacOS and Mountpoint). For file systems connected via input port, the node
+	            description of the respective connector node describes the required path format.
+				You can also choose a previously selected folder from the drop-down list, or select a location
+				from the &quot;Browse...&quot; dialog.
+				Note that browsing is disabled in some cases:
+				<ul>
+					<li><i>Custom/KNIME URL:</i> Browsing is always disabled.</li>
+					<li><i>Mountpoint:</i> Browsing is disabled if the selected mountpoint isn't connected.
+					Go to the KNIME Explorer and connect to the mountpoint to enable browsing.</li>
+					<li><i>File systems provided via input port:</i>
+					Browsing is disabled if the connector node hasn't been executed since the workflow has been opened.
+					(Re)execute the connector node to enable browsing.</li>
+				</ul>
+                <i>The location can be exposed as or automatically set via a 
+                </i><a href="https://docs.knime.com/latest/analytics_platform_file_handling_guide/index.html#path">
+                <i>path flow variable.</i></a>
+		</option>
+		<option name="Create missing folders">Select if the folders of the selected
+				output
+				location should be created if they do not already exist. If
+				this
+				option is unchecked, the node will fail if a folder does not
+				exist.
+			</option>
+		<option name="If exists">
+			Specify the behavior of the node in case the output file already exists.
+			<ul>
+				<li><i>Overwrite:</i> Will replace any existing file.
+				</li>
+				<li><i>Ignore:</i> Will ignore existing files
+				</li>
+				<li><i>Fail:</i> Will issue an error during the node's execution (to prevent unintentional overwrite).
+				</li>
+			</ul>
+		</option>
+		<option name="Archive entry name mode">
+			This mode determines what the folder structure looks like when you de-compress the archive.
+			<ul>
+				<li><i>Relative source path:</i>
+					This mode ensures that when de-compressing the archive solely the selected source file/folder and
+					its content will be created.
+				</li>
+				<li><i>Absolute source path:</i>
+					This mode ensures that when de-compressing the archive the selected source file/folder, its content
+					as well as the folders containing the selected source will be created. Note that those
+					additional folders don't contain any other files/folders other than those to be compressed.
+				</li>
+				<li><i>Remove leading folder prefix from source path:</i>
+					This mode behaves similar to the absolute source path option, except that the specified
+					folder prefix is being ignored, i.e., the folders matching the prefix will not be created when
+					de-compressing the archive.
+				</li>
+				<li><i>From table column:</i>
+					This mode ensure that the archive entry name matches the one specified by the selected column, in
+					other words, when de-compressing the archive the created folder structure will coincide with the
+					one specified by the selected column.
+				</li>
+			</ul>
+			<b>Note:</b> The last two modes might create invalid archive entry names, i.e., entry names resulting
+			in archives that would not be de-compressible. In these cases the node will fail.
+		</option>
+		<option name="Compression">
+			Allows to select the desired compression format.
+		</option>
+		<option name="Flatten folder">
+			This option allows to specify where the files are located if multiple files have to be compressed. If
+			checked all files are compressed to the same folder, otherwise the archive will contain also the folder
+			containing the files. <i>Note:</i> If the (source) folder gets flattened it might occur that two files with
+			the very same name end up in the same location. In this case the execution will fail. 
+		</option>
+		<option name="Include empty folders">
+			This option allows to specify whether or not empty folders should be included in the archive.
+		</option>
+	</fullDescription>
+
+	<ports>
+		<inPort name="Input table" index="0">
+			The input table containing a Path column.
+		</inPort>
+		<dynInPort insert-before="0" name="Source File System Connection"
+			group-identifier="Source File System Connection">
+			The source file system connection.
+		</dynInPort>
+		<dynInPort insert-before="1" name="Destination File System Connection"
+			group-identifier="Destination File System Connection">
+			The destination file system connection.
+		</dynInPort>
+	</ports>
+</knimeNode>

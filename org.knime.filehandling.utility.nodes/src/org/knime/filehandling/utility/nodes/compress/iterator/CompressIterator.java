@@ -44,30 +44,17 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 28, 2020 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
+ *   Feb 2, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.compress.archiver;
+package org.knime.filehandling.utility.nodes.compress.iterator;
 
-import java.io.IOException;
-import java.nio.file.Path;
-
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
+import org.knime.filehandling.utility.nodes.utils.iterators.ClosableIterator;
 
 /**
- * A {@link CheckedExceptionBiFunction} that allows to create an {@link ArchiveEntry} from a given {@link Path} and
- * entry name.
+ * An {@link ClosableIterator} over instances of {@link CompressEntry}.
  *
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
-public interface ArchiveEntryCreator extends CheckedExceptionBiFunction<Path, String, ArchiveEntry, IOException> {
-
-    /**
-     * Validates that an archive can be created provided the given parameters.
-     *
-     * @param path the path to validate
-     * @param entryName the entry name to validate
-     */
-    void validate(Path path, String entryName);
+public interface CompressIterator extends ClosableIterator<CompressEntry> {
 
 }

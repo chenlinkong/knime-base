@@ -44,30 +44,55 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 28, 2020 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
+ *   Jan 28, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.compress.archiver;
+package org.knime.filehandling.utility.nodes.compress.table;
 
-import java.io.IOException;
-import java.nio.file.Path;
-
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
+import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
+import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.context.ports.PortsConfiguration;
+import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.filehandling.utility.nodes.compress.AbstractCompressNodeConfig;
 
 /**
- * A {@link CheckedExceptionBiFunction} that allows to create an {@link ArchiveEntry} from a given {@link Path} and
- * entry name.
+ * Configuration of the "Compress Files/Folder (Table)" node.
  *
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
-public interface ArchiveEntryCreator extends CheckedExceptionBiFunction<Path, String, ArchiveEntry, IOException> {
+final class CompressTableNodeConfig extends AbstractCompressNodeConfig<TableTruncationSettings> {
+
+    private static final String CFG_INPUT_COLUMN = "source_column";
+
+    private final SettingsModelString m_pathColModel;
 
     /**
-     * Validates that an archive can be created provided the given parameters.
+     * Constructor.
      *
-     * @param path the path to validate
-     * @param entryName the entry name to validate
+     * @param portsConfig
      */
-    void validate(Path path, String entryName);
+    protected CompressTableNodeConfig(final PortsConfiguration portsConfig) {
+        super(portsConfig, new TableTruncationSettings(CFG_TRUNCATE_OPTION));
+        m_pathColModel = new SettingsModelString(CFG_INPUT_COLUMN, null);
+    }
+
+    SettingsModelString getPathColModel() {
+        return m_pathColModel;
+    }
+
+    @Override
+    protected void validateAdditionalSettingsForModel(final NodeSettingsRO settings) throws InvalidSettingsException {
+        m_pathColModel.validateSettings(settings);
+    }
+
+    @Override
+    protected void loadAdditionalSettingsForModel(final NodeSettingsRO settings) throws InvalidSettingsException {
+        m_pathColModel.loadSettingsFrom(settings);
+    }
+
+    @Override
+    protected void saveAdditionalSettingsForModel(final NodeSettingsWO settings) {
+        m_pathColModel.saveSettingsTo(settings);
+    }
 
 }

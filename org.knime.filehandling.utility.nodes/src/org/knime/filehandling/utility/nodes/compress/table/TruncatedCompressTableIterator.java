@@ -44,30 +44,47 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 28, 2020 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
+ *   Feb 1, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.compress.archiver;
+package org.knime.filehandling.utility.nodes.compress.table;
 
 import java.io.IOException;
 import java.nio.file.Path;
 
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
+import org.knime.core.node.BufferedDataTable;
+import org.knime.filehandling.core.connections.FSConnection;
+import org.knime.filehandling.core.connections.FSFiles;
+import org.knime.filehandling.core.data.location.FSLocationValueMetaData;
+import org.knime.filehandling.core.defaultnodesettings.filtermode.SettingsModelFilterMode.FilterMode;
+import org.knime.filehandling.utility.nodes.compress.iterator.CompressEntry;
+import org.knime.filehandling.utility.nodes.compress.iterator.CompressIterator;
+import org.knime.filehandling.utility.nodes.truncator.PathToStringTruncator;
+import org.knime.filehandling.utility.nodes.truncator.TruncationSettings;
 
 /**
- * A {@link CheckedExceptionBiFunction} that allows to create an {@link ArchiveEntry} from a given {@link Path} and
- * entry name.
+ * An instance of {@link CompressIterator} processing a {@link BufferedDataTable} containing a path column.
  *
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
-public interface ArchiveEntryCreator extends CheckedExceptionBiFunction<Path, String, ArchiveEntry, IOException> {
+final class TruncatedCompressTableIterator extends AbstractCompressTableIterator {
 
-    /**
-     * Validates that an archive can be created provided the given parameters.
-     *
-     * @param path the path to validate
-     * @param entryName the entry name to validate
-     */
-    void validate(Path path, String entryName);
+    private final TruncationSettings m_truncationSettings;
+
+    TruncatedCompressTableIterator(final TruncationSettings truncationSettings, final BufferedDataTable table,
+        final int pathColIdx, final FSConnection connection, final FSLocationValueMetaData metaData,
+        final boolean includeEmptyFolders) {
+        super(table, pathColIdx, connection, metaData, includeEmptyFolders);
+        m_truncationSettings = truncationSettings;
+    }
+
+    @Override
+    public CompressEntry next() { // NOSONAR the createEntry call throws a NoSuchElementException
+        return createEntry(this::getPathTruncator);
+    }
+
+    private PathToStringTruncator getPathTruncator(final Path basePath) throws IOException {
+        final FilterMode filterMode = FSFiles.isDirectory(basePath) ? FilterMode.FOLDER : FilterMode.FILE;
+        return m_truncationSettings.getPathTruncator(basePath, filterMode);
+    }
 
 }

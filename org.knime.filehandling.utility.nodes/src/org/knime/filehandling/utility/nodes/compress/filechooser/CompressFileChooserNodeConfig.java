@@ -44,30 +44,59 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 28, 2020 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
+ *   Feb 8, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.compress.archiver;
+package org.knime.filehandling.utility.nodes.compress.filechooser;
 
-import java.io.IOException;
-import java.nio.file.Path;
-
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
+import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.NodeSettingsRO;
+import org.knime.core.node.NodeSettingsWO;
+import org.knime.core.node.context.ports.PortsConfiguration;
+import org.knime.filehandling.core.defaultnodesettings.filechooser.reader.SettingsModelReaderFileChooser;
+import org.knime.filehandling.core.defaultnodesettings.filtermode.SettingsModelFilterMode.FilterMode;
+import org.knime.filehandling.utility.nodes.compress.AbstractCompressNodeConfig;
+import org.knime.filehandling.utility.nodes.truncator.TruncationSettings;
 
 /**
- * A {@link CheckedExceptionBiFunction} that allows to create an {@link ArchiveEntry} from a given {@link Path} and
- * entry name.
+ * Implements the configuration of the "Compress Files/Folder" no table input node.
  *
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
-public interface ArchiveEntryCreator extends CheckedExceptionBiFunction<Path, String, ArchiveEntry, IOException> {
+final class CompressFileChooserNodeConfig extends AbstractCompressNodeConfig<TruncationSettings> {
+
+    private static final String CFG_INPUT_LOCATION = "source_location";
+
+    private final SettingsModelReaderFileChooser m_inputLocationChooserModel;
+
+    CompressFileChooserNodeConfig(final PortsConfiguration portsConfig) {
+        super(portsConfig, new TruncationSettings(CFG_TRUNCATE_OPTION));
+        m_inputLocationChooserModel = new SettingsModelReaderFileChooser(CFG_INPUT_LOCATION, portsConfig,
+            AbstractCompressNodeConfig.CONNECTION_INPUT_FILE_PORT_GRP_NAME, FilterMode.FILE);
+    }
 
     /**
-     * Validates that an archive can be created provided the given parameters.
+     * Returns the {@link SettingsModelReaderFileChooser} used to select a file, folder or files in folder which should
+     * get compressed.
      *
-     * @param path the path to validate
-     * @param entryName the entry name to validate
+     * @return the {@link SettingsModelReaderFileChooser} used to select a directory
      */
-    void validate(Path path, String entryName);
+    final SettingsModelReaderFileChooser getInputLocationChooserModel() {
+        return m_inputLocationChooserModel;
+    }
+
+    @Override
+    protected void validateAdditionalSettingsForModel(final NodeSettingsRO settings) throws InvalidSettingsException {
+        m_inputLocationChooserModel.validateSettings(settings);
+    }
+
+    @Override
+    protected void loadAdditionalSettingsForModel(final NodeSettingsRO settings) throws InvalidSettingsException {
+        m_inputLocationChooserModel.loadSettingsFrom(settings);
+    }
+
+    @Override
+    protected void saveAdditionalSettingsForModel(final NodeSettingsWO settings) {
+        m_inputLocationChooserModel.saveSettingsTo(settings);
+    }
 
 }

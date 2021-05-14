@@ -44,30 +44,60 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 28, 2020 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
+ *   Feb 15, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.compress.archiver;
+package org.knime.filehandling.utility.nodes.compress.iterator;
 
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
 
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
+import org.knime.filehandling.core.connections.FSPath;
 
 /**
- * A {@link CheckedExceptionBiFunction} that allows to create an {@link ArchiveEntry} from a given {@link Path} and
- * entry name.
+ * A {@link SimpleFileVisitor} that collects all files and empty folders.
  *
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
-public interface ArchiveEntryCreator extends CheckedExceptionBiFunction<Path, String, ArchiveEntry, IOException> {
+final class FileAndEmptyFoldersCollector extends SimpleFileVisitor<Path> {
 
-    /**
-     * Validates that an archive can be created provided the given parameters.
-     *
-     * @param path the path to validate
-     * @param entryName the entry name to validate
-     */
-    void validate(Path path, String entryName);
+    private final List<FSPath> m_paths;
 
+    private final boolean m_includeEmptyFolders;
+
+    int m_visitedFolders = 0;
+
+    boolean m_empty;
+
+    FileAndEmptyFoldersCollector(final List<FSPath> paths, final boolean includeEmptyFolders) {
+        m_paths = paths;
+        m_includeEmptyFolders = includeEmptyFolders;
+    }
+
+    @Override
+    public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
+        m_empty = true;
+        m_visitedFolders++;
+        return super.preVisitDirectory(dir, attrs);
+    }
+
+    @Override
+    public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
+        m_paths.add((FSPath)file);
+        m_empty = false;
+        return FileVisitResult.CONTINUE;
+    }
+
+    @Override
+    public FileVisitResult postVisitDirectory(final Path dir, final IOException exc) throws IOException {
+        m_visitedFolders--;
+        if (m_includeEmptyFolders && m_empty && m_visitedFolders > 0) {
+            m_paths.add((FSPath)dir);
+        }
+        m_empty = false;
+        return super.postVisitDirectory(dir, exc);
+    }
 }

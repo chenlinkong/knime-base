@@ -44,30 +44,48 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   Oct 28, 2020 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
+ *   Jan 28, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.compress.archiver;
+package org.knime.filehandling.utility.nodes.compress.filechooser;
 
 import java.io.IOException;
-import java.nio.file.Path;
 
-import org.apache.commons.compress.archivers.ArchiveEntry;
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
+import org.knime.core.node.InvalidSettingsException;
+import org.knime.core.node.context.ports.PortsConfiguration;
+import org.knime.core.node.port.PortObject;
+import org.knime.core.node.port.PortObjectSpec;
+import org.knime.filehandling.core.defaultnodesettings.filechooser.reader.SettingsModelReaderFileChooser;
+import org.knime.filehandling.utility.nodes.compress.AbstractCompressNodeModel;
+import org.knime.filehandling.utility.nodes.compress.iterator.CompressIterator;
 
 /**
- * A {@link CheckedExceptionBiFunction} that allows to create an {@link ArchiveEntry} from a given {@link Path} and
- * entry name.
+ * Implements the compress file/folder node with no table input.
  *
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
-public interface ArchiveEntryCreator extends CheckedExceptionBiFunction<Path, String, ArchiveEntry, IOException> {
+final class CompressFileChooserNodeModel extends AbstractCompressNodeModel<CompressFileChooserNodeConfig> {
 
     /**
-     * Validates that an archive can be created provided the given parameters.
+     * Constructor.
      *
-     * @param path the path to validate
-     * @param entryName the entry name to validate
+     * @param portsConfig the ports configuration
      */
-    void validate(Path path, String entryName);
+    CompressFileChooserNodeModel(final PortsConfiguration portsConfig) {
+        super(portsConfig, new CompressFileChooserNodeConfig(portsConfig));
+    }
+
+    @Override
+    protected void doConfigure(final PortObjectSpec[] inSpecs) throws InvalidSettingsException {
+        getConfig().getInputLocationChooserModel().configureInModel(inSpecs, getStatusConsumer());
+    }
+
+    @Override
+    protected CompressIterator getFilesToCompress(final PortObject[] inData, final boolean includeEmptyFolders)
+        throws IOException, InvalidSettingsException {
+        final CompressFileChooserNodeConfig cfg = getConfig();
+        SettingsModelReaderFileChooser fileChooser = cfg.getInputLocationChooserModel();
+        return new CompressFileChooserIterator(cfg.getTruncationSettings(), fileChooser, getStatusConsumer(),
+            includeEmptyFolders);
+    }
 
 }
