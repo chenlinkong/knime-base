@@ -75,6 +75,7 @@ import org.knime.filehandling.core.data.location.FSLocationValueMetaData;
 import org.knime.filehandling.core.data.location.cell.SimpleFSLocationCell;
 import org.knime.filehandling.core.data.location.cell.SimpleFSLocationCellFactory;
 import org.knime.filehandling.core.defaultnodesettings.filechooser.writer.FileOverwritePolicy;
+import org.knime.filehandling.utility.nodes.transfer.policy.TransferFunction;
 import org.knime.filehandling.utility.nodes.utils.FileStatus;
 
 /**

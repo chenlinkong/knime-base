@@ -44,22 +44,54 @@
  * ---------------------------------------------------------------------
  *
  * History
- *   7 Oct 2020 (lars.schweikardt): created
+ *   Feb 24, 2021 (Mark Ortmann, KNIME GmbH, Berlin, Germany): created
  */
-package org.knime.filehandling.utility.nodes.transfer;
+package org.knime.filehandling.utility.nodes.transfer.iterators;
 
-import java.io.IOException;
-import java.nio.file.Path;
-
-import org.knime.filehandling.core.util.CheckedExceptionBiFunction;
-import org.knime.filehandling.utility.nodes.utils.FileStatus;
+import org.knime.filehandling.core.connections.FSPath;
 
 /**
- * Interface which extends {@link CheckedExceptionBiFunction} to be used with two {@link Path} as parameters and
- * {@link FileStatus} as a return type.
+ * A pair of source and target file/folder.
  *
- * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
+ * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
  */
-public interface TransferFunction extends CheckedExceptionBiFunction<Path, Path, FileStatus, IOException> {
+public final class TransferPair {
 
+    private final FSPath m_source;
+
+    private final FSPath m_destination;
+
+    /**
+     * Constructor.
+     *
+     * @param source the source file/folder
+     * @param destination the destination file/folder
+     */
+    public TransferPair(final FSPath source, final FSPath destination) {
+        m_source = source;
+        m_destination = (FSPath) destination.normalize();
+    }
+
+    /**
+     * Returns the source file/folder.
+     *
+     * @return the source file/folder
+     */
+    public FSPath getSource() {
+        return m_source;
+    }
+
+    /**
+     * Returns the destination file/folder.
+     *
+     * @return the destination file/folder
+     */
+    public FSPath getDestination() {
+        return m_destination;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("<'%s';'%s'>", m_source.toString(), m_destination.toString());
+    }
 }
