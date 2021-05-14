@@ -48,7 +48,6 @@
 package org.knime.filehandling.utility.nodes.deletepaths.table;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 
@@ -107,7 +106,8 @@ final class DeleteFilesAndFoldersTableNodeModel
         final SettingsModelString pathCol = getConfig().getColumnSelection();
         if (pathCol.getStringValue() == null) {
             autoGuess(inSpecs);
-            setWarningMessage(String.format("Auto-guessed column containing file/folder paths '%s'", pathCol.getStringValue()));
+            setWarningMessage(
+                String.format("Auto-guessed column containing file/folder paths '%s'", pathCol.getStringValue()));
         }
         validateSettings(inSpecs, pathCol);
     }
@@ -158,9 +158,7 @@ final class DeleteFilesAndFoldersTableNodeModel
         final BufferedDataTable table = (BufferedDataTable)inData[m_dataTablePortIndex];
         return new DeleteTableIterator(table,
             table.getSpec().findColumnIndex(getConfig().getColumnSelection().getStringValue()),
-            getFSConnection(inData).orElse(null), getFSLocationValueMetaData(Arrays.stream(inData)//
-                .map(PortObject::getSpec)//
-                .toArray(PortObjectSpec[]::new)));
+            getFSConnection(inData).orElse(null));
     }
 
     /**

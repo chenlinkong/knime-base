@@ -53,7 +53,6 @@ import java.io.IOException;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.filehandling.core.connections.FSConnection;
 import org.knime.filehandling.core.connections.FSPath;
-import org.knime.filehandling.core.data.location.FSLocationValueMetaData;
 import org.knime.filehandling.utility.nodes.deletepaths.DeleteFilesFolderIterator;
 import org.knime.filehandling.utility.nodes.utils.iterators.ClosableIterator;
 import org.knime.filehandling.utility.nodes.utils.iterators.FsCellColumnIterator;
@@ -63,12 +62,12 @@ import org.knime.filehandling.utility.nodes.utils.iterators.FsCellColumnIterator
  *
  * @author Lars Schweikardt, KNIME GmbH, Berlin, Germany
  */
-final class DeleteTableIterator implements DeleteFilesFolderIterator{
+final class DeleteTableIterator implements DeleteFilesFolderIterator {
 
     private final ClosableIterator<FSPath> m_iterator;
 
-    DeleteTableIterator(final BufferedDataTable table, final int pathColIdx, final FSConnection connection, final FSLocationValueMetaData metaData){
-        m_iterator = new FsCellColumnIterator(table, pathColIdx, connection, metaData);
+    DeleteTableIterator(final BufferedDataTable table, final int pathColIdx, final FSConnection connection) {
+        m_iterator = new FsCellColumnIterator(table, pathColIdx, connection);
     }
 
     @Override

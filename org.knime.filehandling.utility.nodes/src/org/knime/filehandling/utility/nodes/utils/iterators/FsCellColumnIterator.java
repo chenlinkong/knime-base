@@ -52,6 +52,7 @@ import java.io.IOException;
 import java.util.Optional;
 
 import org.knime.core.data.DataCell;
+import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataRow;
 import org.knime.core.data.MissingValue;
 import org.knime.core.data.MissingValueException;
@@ -60,6 +61,7 @@ import org.knime.core.data.container.filter.TableFilter;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.core.node.NodeLogger;
 import org.knime.filehandling.core.connections.FSConnection;
+import org.knime.filehandling.core.connections.FSFileSystem;
 import org.knime.filehandling.core.connections.FSLocation;
 import org.knime.filehandling.core.connections.FSPath;
 import org.knime.filehandling.core.connections.location.FSPathProvider;
@@ -93,13 +95,26 @@ public final class FsCellColumnIterator implements ClosableIterator<FSPath> {
      * @param table the input table containing a {@link FSLocationValue} column
      * @param pathColIdx the index of the {@link FSLocationValue} column
      * @param connection the {@link FSConnection}
-     * @param metaData the {@link FSLocationValueMetaData}
      */
-    public FsCellColumnIterator(final BufferedDataTable table, final int pathColIdx, final FSConnection connection, final FSLocationValueMetaData metaData) {
-        m_pathProviderFactory = FSPathProviderFactory.newFactory(Optional.ofNullable(connection), metaData);
+    public FsCellColumnIterator(final BufferedDataTable table, final int pathColIdx, final FSConnection connection) {
+        m_pathProviderFactory = FSPathProviderFactory.newFactory(Optional.ofNullable(connection),
+            getFSLocationValueMetaData(connection, table.getDataTableSpec().getColumnSpec(pathColIdx)));
         m_iter = table.filter(TableFilter.materializeCols(pathColIdx)).iterator();
         m_pathColIdx = pathColIdx;
         m_size = table.size();
+    }
+
+    @SuppressWarnings("resource")
+    private static FSLocationValueMetaData getFSLocationValueMetaData(final FSConnection connection,
+        final DataColumnSpec spec) {
+        if (connection != null) {
+            FSFileSystem<?> fs = connection.getFileSystem();
+            return new FSLocationValueMetaData(fs.getFileSystemCategory().toString(),
+                fs.getFileSystemSpecifier().orElse(null));
+        } else {
+            return spec.getMetaDataOfType(FSLocationValueMetaData.class).orElseThrow(() -> new IllegalStateException(
+                String.format("Path column '%s' without meta data encountered.", spec.getName())));
+        }
     }
 
     @Override
