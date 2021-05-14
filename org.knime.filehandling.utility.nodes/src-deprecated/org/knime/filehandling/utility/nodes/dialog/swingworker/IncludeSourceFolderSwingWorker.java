@@ -62,11 +62,13 @@ import org.knime.filehandling.core.defaultnodesettings.status.StatusMessageUtils
 import org.knime.filehandling.utility.nodes.utils.PathHandlingUtils;
 
 /**
- * Swingworker to check whether a path ends with ".",  "..", has no parent or is empty and returns a corresponding {@link StatusMessage}.
+ * Swingworker to check whether a path ends with ".", "..", has no parent or is empty and returns a corresponding
+ * {@link StatusMessage}.
  *
  * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
+ * @deprecated since 4.3.3
  */
-
+@Deprecated
 public final class IncludeSourceFolderSwingWorker implements StatusMessageReporter {
 
     private final SettingsModelReaderFileChooser m_readerModel;
