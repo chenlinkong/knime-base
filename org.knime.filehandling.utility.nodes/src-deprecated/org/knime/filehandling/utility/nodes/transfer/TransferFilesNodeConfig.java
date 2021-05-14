@@ -59,7 +59,9 @@ import org.knime.filehandling.core.defaultnodesettings.filechooser.writer.Settin
  * Node config of the Transfer Files node.
  *
  * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 final class TransferFilesNodeConfig {
 
     /** Config key for delete source files checkbox. */

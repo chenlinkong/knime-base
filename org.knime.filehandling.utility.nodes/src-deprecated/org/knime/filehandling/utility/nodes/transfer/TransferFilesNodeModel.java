@@ -93,7 +93,9 @@ import org.knime.filehandling.utility.nodes.utils.PathRelativizerNonTableInput;
  * Node model of the Transfer Files node.
  *
  * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 final class TransferFilesNodeModel extends NodeModel {
 
     private final TransferFilesNodeConfig m_config;
@@ -270,14 +272,12 @@ final class TransferFilesNodeModel extends NodeModel {
     }
 
     @Override
-    protected void loadInternals(final File nodeInternDir, final ExecutionMonitor exec)
-        throws IOException, CanceledExecutionException {
+    protected void loadInternals(final File nodeInternDir, final ExecutionMonitor exec) {
         // nothing to do
     }
 
     @Override
-    protected void saveInternals(final File nodeInternDir, final ExecutionMonitor exec)
-        throws IOException, CanceledExecutionException {
+    protected void saveInternals(final File nodeInternDir, final ExecutionMonitor exec) {
         // nothing to do
     }
 

@@ -80,7 +80,9 @@ import org.knime.filehandling.utility.nodes.utils.PathRelativizerNonTableInput;
  * Computes the status message for the destination {@link DialogComponentWriterFileChooser} of the copy move dialog .
  *
  * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 final class TransferFilesStatusMessageReporter implements StatusMessageReporter {
 
     private static final StatusMessage INVALID_SOURCE = DefaultStatusMessage.mkError("Invalid source path.");

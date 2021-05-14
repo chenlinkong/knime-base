@@ -69,7 +69,9 @@ import org.knime.filehandling.core.port.FileSystemPortObject;
  *
  * @author Simon Schmid, KNIME GmbH, Konstanz, Germany
  * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 public final class TransferFilesNodeFactory extends ConfigurableNodeFactory<TransferFilesNodeModel> {
 
     /** The name of the optional source connection input port group. */

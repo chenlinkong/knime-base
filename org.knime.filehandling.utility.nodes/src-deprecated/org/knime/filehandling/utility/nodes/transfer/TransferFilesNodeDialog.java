@@ -78,7 +78,9 @@ import org.knime.filehandling.utility.nodes.dialog.swingworker.SwingWorkerManage
  * Node dialog of the Transfer Files node.
  *
  * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 final class TransferFilesNodeDialog extends NodeDialogPane {
 
     private static final int STATUS_VIEW_WIDTH = 400;
