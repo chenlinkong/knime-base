@@ -49,7 +49,6 @@
 package org.knime.filehandling.utility.nodes.compress.table;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 
@@ -65,9 +64,7 @@ import org.knime.core.node.port.PortObject;
 import org.knime.core.node.port.PortObjectSpec;
 import org.knime.core.node.util.CheckUtils;
 import org.knime.filehandling.core.connections.FSConnection;
-import org.knime.filehandling.core.connections.FSLocationSpec;
 import org.knime.filehandling.core.data.location.FSLocationValue;
-import org.knime.filehandling.core.data.location.FSLocationValueMetaData;
 import org.knime.filehandling.core.port.FileSystemPortObject;
 import org.knime.filehandling.core.port.FileSystemPortObjectSpec;
 import org.knime.filehandling.core.util.FSLocationColumnUtils;
@@ -172,34 +169,13 @@ final class CompressTableNodeModel extends AbstractCompressNodeModel<CompressTab
         final TableTruncationSettings truncationSettings = config.getTruncationSettings();
         final int pathColIdx = table.getSpec().findColumnIndex(config.getPathColModel().getStringValue());
         final FSConnection fsConnection = getFSConnection(inData);
-        final FSLocationValueMetaData metaData = getFSLocationValueMetaData(inData, pathColIdx);
         if (truncationSettings.entryNameDefinedByTableColumn()) {
-            return new MappedCompressTableIterator(table, pathColIdx, fsConnection, metaData, includeEmptyFolders,
+            return new MappedCompressTableIterator(table, pathColIdx, fsConnection, includeEmptyFolders,
                 table.getSpec().findColumnIndex(truncationSettings.getEntryNameColModel().getStringValue()));
         } else {
-            return new TruncatedCompressTableIterator(truncationSettings, table, pathColIdx, fsConnection, metaData,
+            return new TruncatedCompressTableIterator(truncationSettings, table, pathColIdx, fsConnection,
                 includeEmptyFolders);
         }
-    }
-
-    private FSLocationValueMetaData getFSLocationValueMetaData(final PortObject[] inData, final int pathColIdx) {
-        final PortObjectSpec[] inSpecs = Arrays.stream(inData)//
-            .map(PortObject::getSpec)//
-            .toArray(PortObjectSpec[]::new);
-        FSLocationValueMetaData fsLocationMetaData;
-        if (m_inputConnectionIdx >= 0) {
-            final FileSystemPortObjectSpec fsPortObject = (FileSystemPortObjectSpec)inSpecs[m_inputConnectionIdx];
-            final FSLocationSpec fsLocationSpec = fsPortObject.getFSLocationSpec();
-            fsLocationMetaData = new FSLocationValueMetaData(fsLocationSpec.getFileSystemCategory(),
-                fsLocationSpec.getFileSystemSpecifier().orElse(null));
-        } else {
-            final DataColumnSpec colSpec = ((DataTableSpec)inSpecs[m_inputTableIdx]).getColumnSpec(pathColIdx);
-            fsLocationMetaData =
-                colSpec.getMetaDataOfType(FSLocationValueMetaData.class).orElseThrow(() -> new IllegalStateException(
-                    String.format("Path column '%s' without meta data encountered.", colSpec.getName())));
-        }
-
-        return fsLocationMetaData;
     }
 
     private FSConnection getFSConnection(final PortObject[] inData) {

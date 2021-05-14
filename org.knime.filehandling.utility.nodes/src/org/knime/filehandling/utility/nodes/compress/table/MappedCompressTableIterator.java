@@ -64,7 +64,6 @@ import org.knime.core.node.BufferedDataTable;
 import org.knime.filehandling.core.connections.FSConnection;
 import org.knime.filehandling.core.connections.FSFiles;
 import org.knime.filehandling.core.data.location.FSLocationValue;
-import org.knime.filehandling.core.data.location.FSLocationValueMetaData;
 import org.knime.filehandling.utility.nodes.compress.iterator.CompressEntry;
 import org.knime.filehandling.utility.nodes.compress.iterator.CompressIterator;
 import org.knime.filehandling.utility.nodes.truncator.PathToStringTruncator;
@@ -86,13 +85,12 @@ final class MappedCompressTableIterator extends AbstractCompressTableIterator {
      * @param table the input table
      * @param pathColIdx the column containing the paths that need to be compressed
      * @param connection the {@link FSConnection}
-     * @param metaData the {@link FSLocationValueMetaData}
      * @param includeEmptyFolders flag indicating whether or not empty folder should be compressed
      * @param entyNameColIdx the index of the column storing the archive entry names
      */
     MappedCompressTableIterator(final BufferedDataTable table, final int pathColIdx, final FSConnection connection,
-        final FSLocationValueMetaData metaData, final boolean includeEmptyFolders, final int entryNameColIdx) {
-        super(table, pathColIdx, connection, metaData, includeEmptyFolders);
+        final boolean includeEmptyFolders, final int entryNameColIdx) {
+        super(table, pathColIdx, connection, includeEmptyFolders);
         m_entryNameIter = new EntryNameIterator(table, entryNameColIdx);
     }
 

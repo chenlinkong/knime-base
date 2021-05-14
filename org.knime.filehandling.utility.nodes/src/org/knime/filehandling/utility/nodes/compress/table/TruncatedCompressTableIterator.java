@@ -54,7 +54,6 @@ import java.nio.file.Path;
 import org.knime.core.node.BufferedDataTable;
 import org.knime.filehandling.core.connections.FSConnection;
 import org.knime.filehandling.core.connections.FSFiles;
-import org.knime.filehandling.core.data.location.FSLocationValueMetaData;
 import org.knime.filehandling.core.defaultnodesettings.filtermode.SettingsModelFilterMode.FilterMode;
 import org.knime.filehandling.utility.nodes.compress.iterator.CompressEntry;
 import org.knime.filehandling.utility.nodes.compress.iterator.CompressIterator;
@@ -71,9 +70,8 @@ final class TruncatedCompressTableIterator extends AbstractCompressTableIterator
     private final TruncationSettings m_truncationSettings;
 
     TruncatedCompressTableIterator(final TruncationSettings truncationSettings, final BufferedDataTable table,
-        final int pathColIdx, final FSConnection connection, final FSLocationValueMetaData metaData,
-        final boolean includeEmptyFolders) {
-        super(table, pathColIdx, connection, metaData, includeEmptyFolders);
+        final int pathColIdx, final FSConnection connection, final boolean includeEmptyFolders) {
+        super(table, pathColIdx, connection, includeEmptyFolders);
         m_truncationSettings = truncationSettings;
     }
 

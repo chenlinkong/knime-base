@@ -53,7 +53,6 @@ import java.nio.file.Path;
 
 import org.knime.core.node.BufferedDataTable;
 import org.knime.filehandling.core.connections.FSConnection;
-import org.knime.filehandling.core.data.location.FSLocationValueMetaData;
 import org.knime.filehandling.core.util.CheckedExceptionFunction;
 import org.knime.filehandling.utility.nodes.compress.iterator.CompressEntry;
 import org.knime.filehandling.utility.nodes.compress.iterator.CompressFileFolderEntry;
@@ -78,12 +77,11 @@ abstract class AbstractCompressTableIterator implements CompressIterator {
      * @param table the input table
      * @param pathColIdx the column containing the paths that need to be compressed
      * @param connection the {@link FSConnection}
-     * @param metaData the {@link FSLocationValueMetaData}
      * @param includeEmptyFolders flag indicating whether or not empty folder should be compressed
      */
     AbstractCompressTableIterator(final BufferedDataTable table, final int pathColIdx, final FSConnection connection,
-        final FSLocationValueMetaData metaData, final boolean includeEmptyFolders) {
-        m_fsCellIterator = new FsCellColumnIterator(table, pathColIdx, connection, metaData);
+        final boolean includeEmptyFolders) {
+        m_fsCellIterator = new FsCellColumnIterator(table, pathColIdx, connection);
         m_includeEmptyFolders = includeEmptyFolders;
     }
 
