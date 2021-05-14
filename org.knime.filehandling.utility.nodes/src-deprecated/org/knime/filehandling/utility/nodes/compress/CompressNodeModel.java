@@ -101,7 +101,9 @@ import org.knime.filehandling.utility.nodes.utils.PathRelativizerNonTableInput;
  *
  * @author Timmo Waller-Ehrat, KNIME GmbH, Konstanz, Germany
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 final class CompressNodeModel extends NodeModel {
 
     /**
@@ -315,14 +317,12 @@ final class CompressNodeModel extends NodeModel {
     }
 
     @Override
-    protected void loadInternals(final File internDir, final ExecutionMonitor exec)
-        throws IOException, CanceledExecutionException {
+    protected void loadInternals(final File internDir, final ExecutionMonitor exec) {
         // Not used
     }
 
     @Override
-    protected void saveInternals(final File internDir, final ExecutionMonitor exec)
-        throws IOException, CanceledExecutionException {
+    protected void saveInternals(final File internDir, final ExecutionMonitor exec) {
         // Not used
     }
 

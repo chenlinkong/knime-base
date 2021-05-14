@@ -68,9 +68,12 @@ import org.knime.filehandling.core.defaultnodesettings.status.StatusMessage;
 import org.knime.filehandling.core.defaultnodesettings.status.StatusMessageUtils;
 
 /**
+ * The flatten hierarchy status reported.
  *
  * @author Mark Ortmann, KNIME GmbH, Berlin, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 final class FlattenHierarchyStatusReporter implements StatusMessageReporter {
 
     private static final StatusMessage SUCCESS_MSG = DefaultStatusMessage.mkInfo("");

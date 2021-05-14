@@ -65,7 +65,9 @@ import org.knime.filehandling.core.defaultnodesettings.filtermode.SettingsModelF
  * Node Config for the "Compress Files/Folder" node
  *
  * @author Timmo Waller-Ehrat, KNIME GmbH, Konstanz, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 final class CompressNodeConfig {
 
     static final String INVALID_EXTENSION_ERROR =

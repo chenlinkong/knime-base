@@ -60,7 +60,9 @@ import org.knime.filehandling.core.port.FileSystemPortObject;
  * Node Factory for the "Compress Files/Folder" node
  *
  * @author Timmo Waller-Ehrat, KNIME GmbH, Konstanz, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 public final class CompressNodeFactory extends ConfigurableNodeFactory<CompressNodeModel> {
 
     static final String CONNECTION_INPUT_FILE_PORT_GRP_NAME = "Source File System Connection";

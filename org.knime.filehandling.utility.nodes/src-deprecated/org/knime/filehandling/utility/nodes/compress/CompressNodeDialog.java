@@ -84,7 +84,9 @@ import org.knime.filehandling.utility.nodes.dialog.swingworker.SwingWorkerManage
  * Node Dialog for the "Compress Files/Folder" node
  *
  * @author Timmo Waller-Ehrat, KNIME GmbH, Konstanz, Germany
+ * @deprecated since 4.3.3
  */
+@Deprecated
 final class CompressNodeDialog extends NodeDialogPane {
 
     private static final Pattern PATTERN = Pattern.compile(//

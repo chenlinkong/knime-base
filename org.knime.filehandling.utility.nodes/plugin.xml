@@ -23,7 +23,7 @@
          point="org.knime.workbench.repository.nodes">
       <node
             category-path="/io/f-f-util/archive"
-            deprecated="false"
+            deprecated="true"
             factory-class="org.knime.filehandling.utility.nodes.compress.CompressNodeFactory"
             hidden="false">
       </node>
