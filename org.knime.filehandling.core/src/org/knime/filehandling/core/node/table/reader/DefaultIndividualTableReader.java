@@ -50,8 +50,10 @@ package org.knime.filehandling.core.node.table.reader;
 
 import java.util.OptionalLong;
 
+import org.knime.core.data.DataCell;
 import org.knime.core.data.DataRow;
 import org.knime.core.data.RowKey;
+import org.knime.core.data.append.AppendedColumnRow;
 import org.knime.core.node.ExecutionMonitor;
 import org.knime.core.node.streamable.RowOutput;
 import org.knime.filehandling.core.node.table.reader.randomaccess.RandomAccessible;
@@ -80,6 +82,8 @@ public final class DefaultIndividualTableReader<I, V> implements IndividualTable
 
     private final TypeMapper<V> m_typeMapper;
 
+    private final DataCell m_identifierCell;
+
     /**
      * Constructor.
      *
@@ -87,12 +91,14 @@ public final class DefaultIndividualTableReader<I, V> implements IndividualTable
      *            {@link RowKey}
      * @param indexMapper represents the mapping from the global columns to the columns in the individual table
      * @param rowKeyGenerator creates {@link RowKey RowKeys} from {@link RandomAccessible RandomAccessibles.}
+     * @param identifierCell cell containing the item identifier or null if no identifier should be appended
      */
     public DefaultIndividualTableReader(final TypeMapper<V> typeMapper, final RandomAccessibleDecorator<V> indexMapper,
-        final RowKeyGenerator<V> rowKeyGenerator) {
+        final RowKeyGenerator<V> rowKeyGenerator, final DataCell identifierCell) {
         m_mapper = indexMapper;
         m_rowKeyGenerator = rowKeyGenerator;
         m_typeMapper = typeMapper;
+        m_identifierCell = identifierCell;
     }
 
     @Override
@@ -100,7 +106,12 @@ public final class DefaultIndividualTableReader<I, V> implements IndividualTable
         m_mapper.set(randomAccessible);
         final RowKey key = m_rowKeyGenerator.createKey(randomAccessible);
         // reads the tokens from m_readAdapter and converts them into a DataRow
-        return m_typeMapper.map(key, m_mapper);
+        final DataRow row = m_typeMapper.map(key, m_mapper);
+        if (m_identifierCell != null) {
+            return new AppendedColumnRow(row, m_identifierCell);
+        } else {
+            return row;
+        }
     }
 
     @Override

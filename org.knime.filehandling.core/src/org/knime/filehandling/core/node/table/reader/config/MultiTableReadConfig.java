@@ -133,6 +133,8 @@ public interface MultiTableReadConfig<C extends ReaderSpecificConfig<C>, T> {
      */
     boolean skipEmptyColumns();
 
+    boolean appendItemIdentifierColumn();
+
     /**
      * Indicates whether this config has been created with the provided {@link SourceGroup} AND hasn't been altered
      * using flow variables.<br>

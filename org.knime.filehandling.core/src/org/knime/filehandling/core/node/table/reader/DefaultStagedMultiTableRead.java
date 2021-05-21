@@ -53,8 +53,11 @@ import static org.knime.filehandling.core.node.table.reader.util.MultiTableUtils
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.knime.core.data.DataCell;
+import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.convert.map.ProductionPath;
 import org.knime.core.data.filestore.FileStoreFactory;
 import org.knime.filehandling.core.node.table.reader.config.MultiTableReadConfig;
@@ -105,6 +108,8 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
 
     private final GenericTableReader<I, C, T, V> m_reader;
 
+    private final DataColumnSpec m_itemIdentifierColumn;
+
     /**
      * Constructor.
      *
@@ -120,7 +125,8 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
         final Map<I, TypedReaderTableSpec<T>> individualSpecs,
         final GenericRowKeyGeneratorContextFactory<I, V> rowKeyGenFactory, final RawSpec<T> rawSpec,
         final Supplier<ReadAdapter<T, V>> readAdapterSupplier,
-        final TableTransformationFactory<T> tableTransformationFactory, final MultiTableReadConfig<C, T> config) {
+        final TableTransformationFactory<T> tableTransformationFactory, final MultiTableReadConfig<C, T> config,
+        final DataColumnSpec itemIdentifierColumn) {
         m_rawSpec = rawSpec;
         m_individualSpecs = individualSpecs;
         m_rowKeyGenFactory = rowKeyGenFactory;
@@ -128,6 +134,7 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
         m_tableTransformationFactory = tableTransformationFactory;
         m_reader = reader;
         m_readAdapterSupplier = readAdapterSupplier;
+        m_itemIdentifierColumn = itemIdentifierColumn;
     }
 
     @Override
@@ -174,8 +181,17 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
         createIndividualTableReaderFactory(final TableTransformation<T> transformationModel) {
         final TableReadConfig<C> tableReadConfig = m_config.getTableReadConfig();
         return new IndividualTableReaderFactory<>(m_individualSpecs, tableReadConfig,
-            transformationModel, this::createTypeMapper,
-            m_rowKeyGenFactory.createContext(tableReadConfig));
+                transformationModel, this::createTypeMapper,
+                m_rowKeyGenFactory.createContext(tableReadConfig),
+                createItemIdentifierCellFactory());
+    }
+
+    private Function<I, DataCell> createItemIdentifierCellFactory() {
+        if (m_config.appendItemIdentifierColumn()) {
+            return m_reader::createIdentifierCell;
+        } else {
+            return null;
+        }
     }
 
     private Read<I, V> createRead(final I path, final TableReadConfig<C> config) throws IOException {

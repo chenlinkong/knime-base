@@ -58,7 +58,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataTableSpec;
+import org.knime.core.data.DataTableSpecCreator;
 import org.knime.filehandling.core.node.table.reader.ImmutableTableTransformation;
 import org.knime.filehandling.core.node.table.reader.SourceGroup;
 import org.knime.filehandling.core.node.table.reader.selector.RawSpec;
@@ -87,8 +89,10 @@ public final class DefaultTableSpecConfig<T> implements TableSpecConfig<T> {
 
     private final TableTransformation<T> m_tableTransformation;
 
+    private final DataColumnSpec m_itemIdentifierColumnSpec;
+
     <I> DefaultTableSpecConfig(final String sourceGroupID, final ConfigID configID,
-        final Map<I, TypedReaderTableSpec<T>> individualSpecs, final TableTransformation<T> tableTransformation) {
+        final Map<I, TypedReaderTableSpec<T>> individualSpecs, final TableTransformation<T> tableTransformation, final DataColumnSpec itemIdentifierColumnSpec) {
         m_sourceGroupID = sourceGroupID;
         m_configID = configID;
         m_individualSpecs = individualSpecs.entrySet().stream()//
@@ -98,15 +102,17 @@ public final class DefaultTableSpecConfig<T> implements TableSpecConfig<T> {
                 , (x, y) -> y//
                 , LinkedHashMap::new));
         m_tableTransformation = ImmutableTableTransformation.copy(tableTransformation);
+        m_itemIdentifierColumnSpec = itemIdentifierColumnSpec;
     }
 
     DefaultTableSpecConfig(final String sourceGroupID, final ConfigID configID, final String[] items,
         final Collection<TypedReaderTableSpec<T>> individualSpecs,
-        final ImmutableTableTransformation<T> tableTransformation) {
+        final ImmutableTableTransformation<T> tableTransformation, final DataColumnSpec itemIdentifierColumnSpec) {
         m_configID = configID;
         m_sourceGroupID = sourceGroupID;
         m_individualSpecs = createIndividualSpecsMap(items, individualSpecs);
         m_tableTransformation = tableTransformation;
+        m_itemIdentifierColumnSpec = itemIdentifierColumnSpec;
     }
 
     private static <T> LinkedHashMap<String, TypedReaderTableSpec<T>> createIndividualSpecsMap(final String[] items,
@@ -134,8 +140,8 @@ public final class DefaultTableSpecConfig<T> implements TableSpecConfig<T> {
      */
     public static <I, T> TableSpecConfig<T> createFromTransformationModel(final String sourceGroupID,
         final ConfigID configID, final Map<I, TypedReaderTableSpec<T>> individualSpecs,
-        final TableTransformation<T> tableTransformation) {
-        return new DefaultTableSpecConfig<>(sourceGroupID, configID, individualSpecs, tableTransformation);
+        final TableTransformation<T> tableTransformation, final DataColumnSpec itemIdentifierColumnSpec) {
+        return new DefaultTableSpecConfig<>(sourceGroupID, configID, individualSpecs, tableTransformation, itemIdentifierColumnSpece);
     }
 
     /**
@@ -168,7 +174,14 @@ public final class DefaultTableSpecConfig<T> implements TableSpecConfig<T> {
 
     @Override
     public DataTableSpec getDataTableSpec() {
-        return TableTransformationUtils.toDataTableSpec(getTableTransformation());
+        final DataTableSpec rawSpec = TableTransformationUtils.toDataTableSpec(getTableTransformation());
+        if (m_itemIdentifierColumnSpec != null) {
+            DataTableSpecCreator tableSpecCreator = new DataTableSpecCreator(rawSpec);
+            // TODO avoid name conflicts
+            tableSpecCreator.addColumns(m_itemIdentifierColumnSpec);
+            return tableSpecCreator.createSpec();
+        }
+        return rawSpec;
     }
 
     @Override
