@@ -168,6 +168,12 @@ enum CSVMultiTableReadConfigSerializer
     /** string key used to save the value of the character used as comment start */
     private static final String CFG_COMMENT_CHAR = "comment_char";
 
+    private static final String CFG_APPEND_PATH_COLUMN = "append_path_column" + SettingsModel.CFGKEY_INTERNAL;
+
+    private static final String CFG_PATH_COLUMN_NAME = "path_column_name" + SettingsModel.CFGKEY_INTERNAL;
+
+    private static final String DEFAULT_PATH_COLUMN_NAME = "Path";
+
     private final TableSpecConfigSerializer<Class<?>> m_tableSpecConfigSerializer;
 
     private enum ClassTypeSerializer implements NodeSettingsSerializer<Class<?>> {
@@ -317,6 +323,12 @@ enum CSVMultiTableReadConfigSerializer
 
         config.setSaveTableSpecConfig(settings.getBoolean(CFG_SAVE_TABLE_SPEC_CONFIG, true));
 
+        // added in 4.4.0
+        if (settings.containsKey(CFG_APPEND_PATH_COLUMN)) {
+            config.setAppendItemIdentifierColumn(settings.getBoolean(CFG_APPEND_PATH_COLUMN, false));
+            config.setItemIdentifierColumnName(settings.getString(CFG_PATH_COLUMN_NAME, DEFAULT_PATH_COLUMN_NAME));
+        }
+
         final CSVTableReaderConfig cc = tc.getReaderSpecificConfig();
         cc.setReplaceEmptyWithMissing(settings.getBoolean(CFG_REPLACE_EMPTY_QUOTES_WITH_MISSING, true));
 
@@ -405,6 +417,12 @@ enum CSVMultiTableReadConfigSerializer
             config.setSaveTableSpecConfig(settings.getBoolean(CFG_SAVE_TABLE_SPEC_CONFIG));
         }
 
+        // added in 4.4.0
+        if (settings.containsKey(CFG_APPEND_PATH_COLUMN)) {
+            config.setAppendItemIdentifierColumn(settings.getBoolean(CFG_APPEND_PATH_COLUMN));
+            config.setItemIdentifierColumnName(settings.getString(CFG_PATH_COLUMN_NAME, DEFAULT_PATH_COLUMN_NAME));
+        }
+
         final CSVTableReaderConfig cc = tc.getReaderSpecificConfig();
         cc.setReplaceEmptyWithMissing(settings.getBoolean(CFG_REPLACE_EMPTY_QUOTES_WITH_MISSING));
 
@@ -484,6 +502,8 @@ enum CSVMultiTableReadConfigSerializer
         }
 
         settings.addBoolean(CFG_FAIL_ON_DIFFERING_SPECS, config.failOnDifferingSpecs());
+        settings.addBoolean(CFG_APPEND_PATH_COLUMN, config.appendItemIdentifierColumn());
+        settings.addString(CFG_PATH_COLUMN_NAME, config.getItemIdentifierColumnName());
 
         final TableReadConfig<?> tc = config.getTableReadConfig();
         settings.addBoolean(CFG_LIMIT_DATA_ROWS_SCANNED, tc.limitRowsForSpec());
@@ -562,6 +582,11 @@ enum CSVMultiTableReadConfigSerializer
         // added in 4.3.1
         if (settings.containsKey(CFG_SAVE_TABLE_SPEC_CONFIG)) {
             settings.getBoolean(CFG_SAVE_TABLE_SPEC_CONFIG);
+        }
+
+        if (settings.containsKey(CFG_APPEND_PATH_COLUMN)) {
+            settings.getBoolean(CFG_APPEND_PATH_COLUMN);
+            settings.getString(CFG_PATH_COLUMN_NAME);
         }
 
         settings.getBoolean(CFG_REPLACE_EMPTY_QUOTES_WITH_MISSING);

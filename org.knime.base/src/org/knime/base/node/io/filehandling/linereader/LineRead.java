@@ -58,6 +58,7 @@ import java.util.OptionalLong;
 import java.util.regex.Pattern;
 
 import org.knime.core.node.NodeLogger;
+import org.knime.filehandling.core.connections.FSPath;
 import org.knime.filehandling.core.node.table.reader.config.TableReadConfig;
 import org.knime.filehandling.core.node.table.reader.randomaccess.RandomAccessible;
 import org.knime.filehandling.core.node.table.reader.randomaccess.RandomAccessibleUtils;
@@ -70,11 +71,11 @@ import org.knime.filehandling.core.util.CompressionAwareCountingInputStream;
  *
  * @author Lars Schweikardt, KNIME GmbH, Konstanz, Germany
  */
-final class LineRead implements Read<Path, String> {
+final class LineRead implements Read<FSPath, String> {
 
     private static final NodeLogger LOGGER = NodeLogger.getLogger(LineRead.class);
 
-    private final Path m_path;
+    private final FSPath m_path;
 
     private final BufferedReader m_reader;
 
@@ -105,7 +106,7 @@ final class LineRead implements Read<Path, String> {
      * @param config the {@link TableReadConfig} of the node
      * @throws IOException
      */
-    LineRead(final Path path, final TableReadConfig<LineReaderConfig2> config) throws IOException {
+    LineRead(final FSPath path, final TableReadConfig<LineReaderConfig2> config) throws IOException {
         m_config = config;
         m_lineReaderConfig = m_config.getReaderSpecificConfig();
 
@@ -203,7 +204,7 @@ final class LineRead implements Read<Path, String> {
     }
 
     @Override
-    public Optional<Path> getItem() {
+    public Optional<FSPath> getItem() {
         return Optional.of(m_path);
     }
 

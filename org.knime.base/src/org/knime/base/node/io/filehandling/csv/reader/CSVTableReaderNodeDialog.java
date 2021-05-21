@@ -53,7 +53,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionListener;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
@@ -62,6 +61,9 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import org.knime.base.node.io.filehandling.csv.reader.api.CSVTableReaderConfig;
 import org.knime.core.node.FlowVariableModel;
@@ -70,6 +72,7 @@ import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.NotConfigurableException;
 import org.knime.core.node.port.PortObjectSpec;
+import org.knime.filehandling.core.connections.FSPath;
 import org.knime.filehandling.core.data.location.variable.FSLocationVariableType;
 import org.knime.filehandling.core.defaultnodesettings.SettingsModelFileChooser2;
 import org.knime.filehandling.core.defaultnodesettings.filechooser.reader.DialogComponentReaderFileChooser;
@@ -91,9 +94,13 @@ final class CSVTableReaderNodeDialog extends AbstractCSVTableReaderNodeDialog {
 
     private JCheckBox m_failOnDifferingSpecs;
 
+    private JCheckBox m_appendPathColumn;
+
+    private JTextField m_pathColumnName;
+
     CSVTableReaderNodeDialog(final SettingsModelReaderFileChooser fileChooserModel,
         final CSVMultiTableReadConfig config,
-        final MultiTableReadFactory<Path, CSVTableReaderConfig, Class<?>> multiReader,
+        final MultiTableReadFactory<FSPath, CSVTableReaderConfig, Class<?>> multiReader,
         final ProductionPathProvider<Class<?>> productionPathProvider, final boolean isDragNDrop) {
         super(fileChooserModel, config, multiReader, productionPathProvider, true, isDragNDrop);
     }
@@ -139,11 +146,19 @@ final class CSVTableReaderNodeDialog extends AbstractCSVTableReaderNodeDialog {
 
         m_failOnDifferingSpecs = new JCheckBox("Fail if specs differ");
         m_filePanel.getSettingsModel().getFilterModeModel().addChangeListener(l -> toggleFailOnDifferingCheckBox());
+        m_appendPathColumn = new JCheckBox("Append path column");
+        m_pathColumnName = new JTextField(20);
+        m_appendPathColumn.addActionListener(e -> togglePathColumnName());
     }
 
     private void toggleFailOnDifferingCheckBox() {
         final boolean enable = m_filePanel.getSettingsModel().getFilterMode() != FilterMode.FILE;
         m_failOnDifferingSpecs.setEnabled(enable);
+    }
+
+    private void togglePathColumnName() {
+        final boolean enable = m_appendPathColumn.isSelected();
+        m_pathColumnName.setEnabled(enable);
     }
 
     @Override
@@ -153,7 +168,27 @@ final class CSVTableReaderNodeDialog extends AbstractCSVTableReaderNodeDialog {
 
     @Override
     protected JPanel[] getAdvancedPanels() {
-        return new JPanel[]{createSpecMergePanel()};
+        return new JPanel[]{createSpecMergePanel(), createPathColumnPanel()};
+    }
+
+    private JPanel createPathColumnPanel() {
+        final JPanel panel = new JPanel(new GridBagLayout());
+
+        panel.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Path column"));
+        final GridBagConstraints gbc = createAndInitGBC();
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0;
+        gbc.weightx = 0;
+        gbc.weighty = 0;
+        gbc.gridy = 0;
+        panel.add(m_appendPathColumn, gbc);
+        gbc.gridx++;
+        panel.add(m_pathColumnName, gbc);
+        gbc.gridx++;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        panel.add(new JPanel(), gbc);
+        return panel;
     }
 
     @Override
@@ -162,7 +197,26 @@ final class CSVTableReaderNodeDialog extends AbstractCSVTableReaderNodeDialog {
         final ActionListener actionListener = l -> configChanged();
 
         m_failOnDifferingSpecs.addActionListener(actionListener);
+        m_appendPathColumn.addActionListener(actionListener);
         m_filePanel.getModel().addChangeListener(l -> configChanged());
+        m_pathColumnName.getDocument().addDocumentListener(new DocumentListener() {
+
+            @Override
+            public void insertUpdate(final DocumentEvent e) {
+                configChanged();
+            }
+
+            @Override
+            public void removeUpdate(final DocumentEvent e) {
+                configChanged();
+            }
+
+            @Override
+            public void changedUpdate(final DocumentEvent e) {
+                configChanged();
+            }
+
+        });
     }
 
     @Override
@@ -183,6 +237,9 @@ final class CSVTableReaderNodeDialog extends AbstractCSVTableReaderNodeDialog {
         m_filePanel.loadSettingsFrom(SettingsUtils.getOrEmpty(settings, SettingsUtils.CFG_SETTINGS_TAB), specs);
         m_failOnDifferingSpecs.setSelected(m_config.failOnDifferingSpecs());
         toggleFailOnDifferingCheckBox();
+        m_appendPathColumn.setSelected(m_config.appendItemIdentifierColumn());
+        m_pathColumnName.setText(m_config.getItemIdentifierColumnName());
+        togglePathColumnName();
     }
 
     @Override
@@ -195,6 +252,8 @@ final class CSVTableReaderNodeDialog extends AbstractCSVTableReaderNodeDialog {
     protected void saveConfig() throws InvalidSettingsException {
         super.saveConfig();
         m_config.setFailOnDifferingSpecs(m_failOnDifferingSpecs.isSelected());
+        m_config.setAppendItemIdentifierColumn(m_appendPathColumn.isSelected());
+        m_config.setItemIdentifierColumnName(m_pathColumnName.getText());
     }
 
     SettingsModelFileChooser2 getFileChooserSettingsModel() {
