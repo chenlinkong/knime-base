@@ -135,6 +135,8 @@ public interface MultiTableReadConfig<C extends ReaderSpecificConfig<C>, T> {
 
     boolean appendItemIdentifierColumn();
 
+    String getItemIdentifierColumnName();
+
     /**
      * Indicates whether this config has been created with the provided {@link SourceGroup} AND hasn't been altered
      * using flow variables.<br>

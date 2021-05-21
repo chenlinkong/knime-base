@@ -50,9 +50,11 @@ package org.knime.filehandling.core.node.table.reader;
 
 import java.io.IOException;
 
+import org.knime.core.data.DataCell;
 import org.knime.core.data.DataColumnSpec;
 import org.knime.core.data.DataColumnSpecCreator;
 import org.knime.core.node.ExecutionMonitor;
+import org.knime.filehandling.core.connections.FSLocation;
 import org.knime.filehandling.core.connections.FSLocationSpec;
 import org.knime.filehandling.core.connections.FSPath;
 import org.knime.filehandling.core.data.location.FSLocationValueMetaData;
@@ -88,6 +90,12 @@ public interface TableReader<C extends ReaderSpecificConfig<C>, T, V> extends Ge
             new FSLocationValueMetaData(spec.getFileSystemCategory(), spec.getFileSystemSpecifier().orElse(null)),
             true);
         return creator.createSpec();
+    }
+
+    @Override
+    default DataCell createIdentifierCell(final FSPath item) {
+        final FSLocation fsLocation = item.toFSLocation();
+        return new SimpleFSLocationCellFactory(fsLocation).createCell(fsLocation);
     }
 
 }

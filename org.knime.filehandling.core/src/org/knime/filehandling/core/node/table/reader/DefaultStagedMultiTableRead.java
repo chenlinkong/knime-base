@@ -71,7 +71,6 @@ import org.knime.filehandling.core.node.table.reader.read.ReadUtils;
 import org.knime.filehandling.core.node.table.reader.rowkey.GenericRowKeyGeneratorContextFactory;
 import org.knime.filehandling.core.node.table.reader.selector.RawSpec;
 import org.knime.filehandling.core.node.table.reader.selector.TableTransformation;
-import org.knime.filehandling.core.node.table.reader.selector.TableTransformationUtils;
 import org.knime.filehandling.core.node.table.reader.spec.TypedReaderTableSpec;
 import org.knime.filehandling.core.node.table.reader.type.mapping.DefaultTypeMapper;
 import org.knime.filehandling.core.node.table.reader.type.mapping.TypeMapper;
@@ -108,7 +107,7 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
 
     private final GenericTableReader<I, C, T, V> m_reader;
 
-    private final DataColumnSpec m_itemIdentifierColumn;
+    private final DataColumnSpec m_itemIdColumn;
 
     /**
      * Constructor.
@@ -134,7 +133,7 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
         m_tableTransformationFactory = tableTransformationFactory;
         m_reader = reader;
         m_readAdapterSupplier = readAdapterSupplier;
-        m_itemIdentifierColumn = itemIdentifierColumn;
+        m_itemIdColumn = itemIdentifierColumn;
     }
 
     @Override
@@ -142,8 +141,7 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
         if (m_config.hasTableSpecConfig()) {
             final TableSpecConfig<T> tableSpecConfig = m_config.getTableSpecConfig();
             final TableTransformation<T> configuredTransformation = tableSpecConfig.getTableTransformation();
-            if (tableSpecConfig.isConfiguredWith(m_config.getConfigID(),
-                transformToString(sourceGroup))) {
+            if (tableSpecConfig.isConfiguredWith(m_config.getConfigID(), transformToString(sourceGroup))) {
                 return createMultiTableRead(sourceGroup, configuredTransformation, m_config.getTableReadConfig(),
                     tableSpecConfig);
             } else {
@@ -163,8 +161,8 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
         final TableTransformation<T> transformationModel) {
         final TableReadConfig<C> tableReadConfig = m_config.getTableReadConfig();
         final ConfigID id = m_config.getConfigID();
-        final TableSpecConfig<T> tableSpecConfig = DefaultTableSpecConfig
-            .createFromTransformationModel(sourceGroup.getID(), id, m_individualSpecs, transformationModel);
+        final TableSpecConfig<T> tableSpecConfig = DefaultTableSpecConfig.createFromTransformationModel(
+            sourceGroup.getID(), id, m_individualSpecs, transformationModel, m_itemIdColumn);
         return createMultiTableRead(sourceGroup, transformationModel, tableReadConfig, tableSpecConfig);
     }
 
@@ -174,16 +172,15 @@ final class DefaultStagedMultiTableRead<I, C extends ReaderSpecificConfig<C>, T,
         return new DefaultMultiTableRead<>(sourceGroup, p -> createRead(p, tableReadConfig), () -> {
             IndividualTableReaderFactory<I, T, V> factory = createIndividualTableReaderFactory(transformationModel);
             return factory::create;
-        }, tableReadConfig, tableSpecConfig, TableTransformationUtils.toDataTableSpec(transformationModel));
+        }, tableReadConfig, tableSpecConfig);
     }
 
     private IndividualTableReaderFactory<I, T, V>
         createIndividualTableReaderFactory(final TableTransformation<T> transformationModel) {
         final TableReadConfig<C> tableReadConfig = m_config.getTableReadConfig();
-        return new IndividualTableReaderFactory<>(m_individualSpecs, tableReadConfig,
-                transformationModel, this::createTypeMapper,
-                m_rowKeyGenFactory.createContext(tableReadConfig),
-                createItemIdentifierCellFactory());
+        return new IndividualTableReaderFactory<>(m_individualSpecs, tableReadConfig, transformationModel,
+            this::createTypeMapper, m_rowKeyGenFactory.createContext(tableReadConfig),
+            createItemIdentifierCellFactory());
     }
 
     private Function<I, DataCell> createItemIdentifierCellFactory() {

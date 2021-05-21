@@ -99,14 +99,12 @@ public final class DefaultMultiTableRead<I, T, V> implements MultiTableRead<T> {
      *            item
      * @param tableReadConfig the {@link TableReadConfig}
      * @param tableSpecConfig corresponding to this instance
-     * @param outputSpec {@link DataTableSpec} of the output table
      */
     public DefaultMultiTableRead(final SourceGroup<I> sourceGroup,
         final CheckedExceptionFunction<I, ? extends Read<I, V>, IOException> readFn,
         final Supplier<BiFunction<I, FileStoreFactory, ? extends IndividualTableReader<I, V>>> individualTableReaderFactorySupplier,
-        final TableReadConfig<?> tableReadConfig, final TableSpecConfig<T> tableSpecConfig,
-        final DataTableSpec outputSpec) {
-        m_outputSpec = outputSpec;
+        final TableReadConfig<?> tableReadConfig, final TableSpecConfig<T> tableSpecConfig) {
+        m_outputSpec = tableSpecConfig.getDataTableSpec();
         m_tableSpecConfig = tableSpecConfig;
         m_tableReadConfig = tableReadConfig;
         m_readFn = readFn;

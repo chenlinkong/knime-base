@@ -56,6 +56,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.knime.core.data.DataColumnSpec;
@@ -141,7 +142,7 @@ public final class DefaultTableSpecConfig<T> implements TableSpecConfig<T> {
     public static <I, T> TableSpecConfig<T> createFromTransformationModel(final String sourceGroupID,
         final ConfigID configID, final Map<I, TypedReaderTableSpec<T>> individualSpecs,
         final TableTransformation<T> tableTransformation, final DataColumnSpec itemIdentifierColumnSpec) {
-        return new DefaultTableSpecConfig<>(sourceGroupID, configID, individualSpecs, tableTransformation, itemIdentifierColumnSpece);
+        return new DefaultTableSpecConfig<>(sourceGroupID, configID, individualSpecs, tableTransformation, itemIdentifierColumnSpec);
     }
 
     /**
@@ -243,6 +244,11 @@ public final class DefaultTableSpecConfig<T> implements TableSpecConfig<T> {
     @Override
     public String getSourceGroupID() {
         return m_sourceGroupID;
+    }
+
+    @Override
+    public Optional<DataColumnSpec> getItemIdentifierColumn() {
+        return Optional.ofNullable(m_itemIdentifierColumnSpec);
     }
 
 }
